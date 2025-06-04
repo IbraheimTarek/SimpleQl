@@ -1,0 +1,5 @@
+sqlite3
+langchain
+streamlit
+langchain-groq
+langchain-community

@@ -1,0 +1,23 @@
+datasets/train/train_databases/movie_platform/movie_platform.sqlite
+
+test queries
+What is the name of the longest movie title? When was it released?
+Name the movie with the most ratings.
+List all movie title rated in April 2020 from user who was a trialist.
+List all movies with the best rating score. State the movie title and number of Mubi user who loves the movie.
+What is the average rating for movie titled 'When Will I Be Loved'?
+
+
+(question) ──► CandidateGenerator ──► rows
+                               ▼
+                       DataVizTool
+  (LLM sees only:) ───►  schema
+                        summary stats
+                        user plot request
+                               ▼
+               LLM returns structured JSON:
+                 {"plot": "histogram", "column": "price", "bins": 30}
+                               ▼
+                    Matplotlib renders chart
+                               ▼
+          path / bytes / Streamlit image displayed

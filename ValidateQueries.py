@@ -7,7 +7,7 @@ from typing import List, Sequence, Dict, Any
 from collections import Counter
 from langchain_groq import ChatGroq
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
-
+from Params import *
 
 JSONTest = Dict[str, Any]
 
@@ -61,7 +61,7 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
         except Exception:
             continue
 
-    # 4️⃣  Still here?  Everything failed.
+    # Still here?  Everything failed.
     raise ValueError("Failed to parse JSON/JSON5/YAML from LLM output.")
 
 
@@ -74,7 +74,7 @@ class UnitTester:
         self,
         groq_api_key: str | None = None,
         *,
-        model_name: str = "meta-llama/llama-4-scout-17b-16e-instruct",
+        model_name: str = VALIDATION_MODEL,
         k_unit_tests: int = 5,
         temperature_gen: float = 0.2,
     ) -> None:

@@ -12,12 +12,12 @@ from Params import *
 JSONTest = Dict[str, Any]
 
 try:
-    import json5            # pip install json5
+    import json5
 except ImportError:
     json5 = None
 
 try:
-    import yaml             # pip install pyyaml
+    import yaml
 except ImportError:
     yaml = None
 
@@ -120,7 +120,7 @@ class UnitTester:
     ) -> List[JSONTest]:
         """
         Calls the LLM once and expects it to respond with a JSON array of
-        exactly `self.k` objects in the schema described at the top.
+        exactly `self.k` objects in the schema.
         """
         system = SystemMessage(
             content=(
@@ -166,13 +166,14 @@ class UnitTester:
         ) -> List[bool]:
             order = bool(test.get("order_matters", False))
 
-            # ---- normalise expected ---------------------------------------
+            # ---- normalise expected results --------------------------
             expected_rows = test["expected"]
             if expected_rows and not isinstance(expected_rows[0], list):
                 expected_rows = [[x] for x in expected_rows]     # 1-col shortcut
             expected_rows = [tuple(r) for r in expected_rows]
 
-            # Decide comparison strategy
+            # Decide comparison strategy based on order_matters flag.
+            # If order matters, we compare lists directly; otherwise, we use a multiset comparison.
             if order:
                 def equal(a: list[tuple]) -> bool:   # keep order
                     return a == expected_rows
@@ -248,6 +249,6 @@ if __name__ == "__main__":
     tester = UnitTester(k_unit_tests=4)
     best = tester.choose_best(QUESTION, CANDIDATES)
 
-    print("──────── BEST CANDIDATE ────────")
+    print("-------- BEST CANDIDATE ---------")
     print(best.strip())
-    print("────────────────────────────────")
+    print("---------------------------------")

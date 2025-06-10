@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import re
 from typing import Dict
 import time
-
+from Params import *
 
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
@@ -15,9 +15,9 @@ class CandidateGenerator:
     """
     CandidateGenerator (CG) synthesizes SQL queries to answer a natural language question.
     
-    It uses two LLM-based tools:
-      - generate_candidate_query: Generates an initial SQL query given the question, schema, and context.
-      - revise_query: Revises the SQL query if execution produces an error or empty result.
+    It uses two LLM tools:
+      -> generate_candidate_query: Generate an initial SQL query given the question, schema, and context.
+      -> revise_query: Revises the SQL query if execution produces an error or empty result or timeout. until it finds a working query or reaches the maximum number of revisions.
     """
     
     def __init__(self, llm, max_revisions=3):
@@ -121,12 +121,12 @@ def clean_sql(sql_str: str) -> str:
         Already-doubled quotes remain doubled.
         """
         literal = match.group(0)          # full match including outer quotes
-        body = literal[1:-1]              # strip leading & trailing quote
+        body = literal[1:-1]              # strip leading ands trailing quote
 
         sentinel = "\x00"                 # temp placeholder unlikely in text
         body = body.replace("''", sentinel)   # protect correctly-escaped ones
         body = body.replace("'", "''")        # escape the rest
-        body = body.replace(sentinel, "''")   # restore originals
+        body = body.replace(sentinel, "''")   # restore originals man
 
         return f"'{body}'"
 
@@ -140,7 +140,7 @@ def execute_query(db_path, query, timeout_sec: int = 60):
     try:
         start = time.time()
 
-        # progress-handler gets invoked every 1 000 VM opcodes
+        # progress-handler gets invoked every 1000 ms (1 second) my guy
         def _watchdog():
             return 1 if time.time() - start > timeout_sec else 0
 
@@ -153,13 +153,13 @@ def execute_query(db_path, query, timeout_sec: int = 60):
         return results, None
 
     except sqlite3.OperationalError as e:
-        # The handler aborts the query with "interrupted".
+        # The handler aborts the query with "interrupted". and we catch it here.
         if "interrupted" in str(e).lower():
             return None, "timeout"
         return None, str(e)
 
     finally:
-        conn.set_progress_handler(None, 0)   # clear handler
+        conn.set_progress_handler(None, 0)   # clear handler so it doesn't linger
         conn.close()
 
 
@@ -178,12 +178,11 @@ def execute_query_rows_columns(db_path, query):
 
 def get_schema_and_context(db_path):
     """
-    Introspects the SQLite database to extract the schema and generate context.
+    extract SQLite database's schema and generate their context.
     
     Returns:
-      - schema: A string with each table's name and its columns in the format:
-                "table_name(col1 type, col2 type, ...)"
-      - context: A summary string listing the available tables.
+      - schema: string with each table's name and its columns in the format: "table_name(col1 type, col2 type, ...)"
+      - context: summary string listing tables.
     """
     conn = sqlite3.connect(db_path)
     schema_parts = []
@@ -213,30 +212,17 @@ def get_schema_and_context(db_path):
     return schema_str, context_str
 
 def run_candidate_generator(question, db_path):
-    """
-    candidate query generation and revision process.
-    
-    It first extracts the schema and context from the database, then:
-      1. Generates an initial candidate query.
-      2. Executes it on the SQLite database.
-      3. If a syntax error occurs or the result is empty, revises the query.
-      4. Repeats until a working query is found or the maximum number of revisions is reached.
-    """
-    # Extract schema and context from the SQLite DB.
     schema, context = get_schema_and_context(db_path)
-    
-    # Initialize the LLM. Here we use ChatOpenAI with temperature=0 for deterministic outputs.
-    llm = ChatGroq(groq_api_key=groq_api_key, model_name="deepseek-r1-distill-llama-70b",temperature=0) 
+    llm = ChatGroq(groq_api_key=groq_api_key, model_name=CANDIDATE_MODEL,temperature=0) 
     candidate_generator = CandidateGenerator(llm=llm)
 
     candidate_query = candidate_generator.generate_candidate_query(question, schema, context)
-    print("Generated Candidate Query:")
-    print(candidate_query)
+    # print("Generated Candidate Query:")
+    # print(candidate_query)
     
     results, error = execute_query(db_path, candidate_query)
     revision_count = 0
 
-    # Loop until the query executes successfully (non-error and non-empty result)
     while (error is not None or (results is not None and len(results) == 0)) and revision_count < candidate_generator.max_revisions:
         issue_description = error if error is not None else "Empty result returned"
         print("\nIssue encountered: ", issue_description)
@@ -248,21 +234,21 @@ def run_candidate_generator(question, db_path):
             faulty_query=candidate_query,
             error_description=issue_description
         )
-        print("\nRevised Candidate Query (Attempt {}):".format(revision_count + 1))
-        print(candidate_query)
+        # print("\nRevised Candidate Query (Attempt {}):".format(revision_count + 1))
+        # print(candidate_query)
         
         results, error = execute_query(db_path, candidate_query)
         revision_count += 1
 
-    print("\nFinal Query:")
-    print(candidate_query)
-    print("\nQuery Results:")
-    print(results)
+    # print("\nFinal Query:")
+    # print(candidate_query)
+    # print("\nQuery Results:")
+    # print(results)
 
 
 def run_candidate_generator(question, db_path, num_candidates=3):
     """
-    Orchestrates the generation of multiple candidate queries.
+    generating multiple candidate queries....
     
     For each candidate:
       1. Extracts the schema and context from the database.
@@ -274,11 +260,11 @@ def run_candidate_generator(question, db_path, num_candidates=3):
     Returns:
       A list of tuples: (final_query, results, error) for each candidate query.
     """
-    # Extract schema and context from the SQLite DB.
+    # 1
     schema, context = get_schema_and_context(db_path)
     
-    # Initialize the LLM (ChatGroq in this case).
-    llm = ChatGroq(groq_api_key=groq_api_key, model_name="deepseek-r1-distill-llama-70b", temperature=0)
+    # 2
+    llm = ChatGroq(groq_api_key=groq_api_key, model_name=CANDIDATE_MODEL, temperature=0)
     candidate_generator = CandidateGenerator(llm=llm)
     
     all_candidates = []
@@ -288,10 +274,10 @@ def run_candidate_generator(question, db_path, num_candidates=3):
         candidate_query = candidate_generator.generate_candidate_query(question, schema, context)
         print("Generated Candidate Query:")
         print(candidate_query)
-        
+        # 3
         results, error = execute_query(db_path, candidate_query)
         revision_count = 0
-        
+        # 4
         while (error is not None or (results is not None and len(results) == 0)) and revision_count < candidate_generator.max_revisions:
             issue_description = error if error is not None else "Empty result returned"
             print("\nIssue encountered: ", issue_description)
@@ -313,7 +299,7 @@ def run_candidate_generator(question, db_path, num_candidates=3):
         print(candidate_query)
         print("\nQuery Results:")
         print(results)
-        
+        # done
         all_candidates.append((candidate_query, results, error))
     
     return all_candidates

@@ -24,10 +24,10 @@ except ImportError:
 
 def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
     """
-    Pull the first JSON-looking array out of the LLM response and return it as Python object.  Works even if the block is JSON5 or YAML.
+    Pull the first JSON_looking array out of the LLM response and return it as Python object.  Works even if the block is JSON5 or YAML.
     Raises ValueError if no array found or if every parser fails.
     """
-    # 1️⃣  grab the first ```json … ``` block, else the first bare [ … ]
+    # grab the first ```json ... ``` block, else the first bare [ ... ]
     code_blocks = re.findall(
         r"```(?:json|json5)?\s*(\[\s*{.*?}\s*])\s*```",
         raw,
@@ -67,7 +67,7 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
 
 class UnitTester:
     """
-    Autonomous agent that ranks candidate SQL queries for a given question by executing LLM-synthesised unit tests on SQLite.
+    agent that ranks SQL queries for a given question by executing LLM-synthesised unit tests on SQLite database.
     """
 
     def __init__(
@@ -210,10 +210,6 @@ class UnitTester:
 
 
 if __name__ == "__main__":
-    """
-    Example usage.  Set GROQ_API_KEY first:
-        python unit_tester_sqlite.py
-    """
 
     QUESTION = (
         "List the names of customers who have placed more than three orders "

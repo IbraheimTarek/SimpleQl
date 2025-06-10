@@ -4,6 +4,10 @@ from langchain.prompts import PromptTemplate
 import os
 from dotenv import load_dotenv
 import re
+from typing import Dict
+import time
+
+
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
 
@@ -95,36 +99,67 @@ Return only the revised SQL query.
 
 
 def clean_sql(sql_str: str) -> str:
-    """
-    Removes markdown code fences (e.g., ```sql ... ```) and any <think>...</think> blocks from the LLM output.
-    """
-    sql_str = sql_str.strip()
-    # Remove markdown code fences
-    if sql_str.startswith("```sql") and sql_str.endswith("```"):
-        lines = sql_str.splitlines()
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].endswith("```"):
-            lines = lines[:-1]
-        sql_str = "\n".join(lines).strip()
-    # Remove <think>...</think> blocks
-    sql_str = re.sub(r"<think>.*?</think>", "", sql_str, flags=re.DOTALL).strip()
-    #print("Cleaned query: ",sql_str)
-    return sql_str
+
+    fence = re.search(r"```(?:\w+)?\s*(.*?)\s*```", sql_str, flags=re.S)
+    if fence:
+        sql_str = fence.group(1)
+
+    sql_str = re.sub(r"<think>.*?</think>", "", sql_str, flags=re.S | re.I)
+
+    quote_map: Dict[int, str] = {
+        0x2018: "'", 0x2019: "'", 0x201A: "'", 0x201B: "'",   # ‘ ’ ‚ ‛
+        0x201C: '"', 0x201D: '"', 0x201E: '"', 0x201F: '"',   # “ ” „ ‟
+        0x2032: "'", 0x2033: '"', 0x0060: "'",                # ′ ″ `
+    }
+    sql_str = sql_str.translate(quote_map)
 
 
-def execute_query(db_path, query):
+    def _escape_in_literal(match: re.Match) -> str:
+        """
+        Receives a single-quoted literal (e.g.  'McDonald's')
+        and doubles any *un-escaped* apostrophes inside it.
+        Already-doubled quotes remain doubled.
+        """
+        literal = match.group(0)          # full match including outer quotes
+        body = literal[1:-1]              # strip leading & trailing quote
+
+        sentinel = "\x00"                 # temp placeholder unlikely in text
+        body = body.replace("''", sentinel)   # protect correctly-escaped ones
+        body = body.replace("'", "''")        # escape the rest
+        body = body.replace(sentinel, "''")   # restore originals
+
+        return f"'{body}'"
+
+    sql_str = re.sub(r"'[^']*'", _escape_in_literal, sql_str, flags=re.S)
+
+    return sql_str.strip()
+
+def execute_query(db_path, query, timeout_sec: int = 60):
 
     conn = sqlite3.connect(db_path)
     try:
+        start = time.time()
+
+        # progress-handler gets invoked every 1 000 VM opcodes
+        def _watchdog():
+            return 1 if time.time() - start > timeout_sec else 0
+
+        conn.set_progress_handler(_watchdog, 1_000)
+
         cursor = conn.cursor()
         cursor.execute(query)
         results = cursor.fetchall()
         conn.commit()
         return results, None
-    except Exception as e:
+
+    except sqlite3.OperationalError as e:
+        # The handler aborts the query with "interrupted".
+        if "interrupted" in str(e).lower():
+            return None, "timeout"
         return None, str(e)
+
     finally:
+        conn.set_progress_handler(None, 0)   # clear handler
         conn.close()
 
 
@@ -134,7 +169,7 @@ def execute_query_rows_columns(db_path, query):
     try:
         cursor.execute(query)
         rows    = cursor.fetchall()
-        columns = [d[0] for d in cursor.description]  # ← NEW
+        columns = [d[0] for d in cursor.description]  # NEW
         return rows, columns, None
     except Exception as e:
         return None, None, str(e)
@@ -286,7 +321,7 @@ def run_candidate_generator(question, db_path, num_candidates=3):
 
 if __name__ == "__main__":
 
-    question = "What is the average rating for movie titled 'When Will I Be Loved'?"
+    question = "For movie titled 'Welcome to the Dollhouse', what is the percentage of the ratings were rated with highest score."
     db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
     schema, context = get_schema_and_context(db_path)
     print("Extracted Schema:")

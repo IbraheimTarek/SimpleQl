@@ -1,3 +1,5 @@
 datasets
 .env
 plots
+__pycache__
+*.pyc

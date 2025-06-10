@@ -24,8 +24,8 @@ except ImportError:
 
 def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
     """
-    Pull the first JSON_looking array out of the LLM response and return it as Python object.  Works even if the block is JSON5 or YAML.
-    Raises ValueError if no array found or if every parser fails.
+    Pull the first JSON_looking array out of the LLM response and return it as Python object.  Work s even if the block is JSON5 or YAML.
+    Raises ValueError if no array found or if every parseing fails.
     """
     # grab the first ```json ... ``` block, else the first bare [ ... ]
     code_blocks = re.findall(
@@ -62,7 +62,7 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
             continue
 
     # Still here?  Everything failed.
-    raise ValueError("Failed to parse JSON/JSON5/YAML from LLM output.")
+    raise ValueError("Failed parse any JSON/JSON5/YAML from LLM output.")
 
 
 class UnitTester:

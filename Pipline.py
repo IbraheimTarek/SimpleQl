@@ -7,7 +7,7 @@ from ValidateQueries import UnitTester
 
 if __name__ == "__main__":
 
-    question = "For movie titled 'Welcome to the Dollhouse', what is the percentage of the ratings were rated with highest score."
+    question = "What is the average rating for movie titled 'When Will I Be Loved'?"
     db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
     candidates = []
     schema, context = get_schema_and_context(db_path)

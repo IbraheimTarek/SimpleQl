@@ -126,7 +126,7 @@ class UnitTester:
             content=(
                 "You are an expert SQL test engineer.  Devise "
                 f"**{self.k} independent unit tests** that will run on SQLite "
-                "and separate correct from incorrect candidate queries.\n\n"
+                "and separate correct from incorrect candidate queries. Each unit test should be designed in a way that it can distinguishes at lease two candidate responses from each other.\n\n"
                 "Each unit-test **MUST** be a JSON object with the following "
                 "keys:\n"
                 "  . schema_sql   - DDL to create the schema.\n"

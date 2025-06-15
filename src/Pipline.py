@@ -10,7 +10,7 @@ from pipeline.question_processing.schema_selector import *
 if __name__ == "__main__":
 
     question = "Among the lists created by user 4208563, which one has the highest number of followers? Indicate how many followers it has and whether the user was a subscriber or not when he created the list."
-    db_path = "D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite"
+    db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
     candidates = []
     db_manager = DBManager(db_path)
     schema = db_manager.schema

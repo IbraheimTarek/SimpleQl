@@ -2,3 +2,8 @@ langchain
 streamlit
 langchain-groq
 langchain-community
+spacy 
+sentence-transformers 
+fuzzywuzzy 
+keybert
+spacy-model-en_core_web_sm

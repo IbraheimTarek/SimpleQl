@@ -7,6 +7,8 @@ import re
 from typing import Dict
 import time
 from Params import *
+from database_manager import DBManager
+from pipeline.question_processing.schema_selector import *
 
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
@@ -134,7 +136,7 @@ def clean_sql(sql_str: str) -> str:
 
     return sql_str.strip()
 
-def execute_query(db_path, query, timeout_sec: int = 60):
+def execute_query(db_path, query, timeout_sec: int = 10):
 
     conn = sqlite3.connect(db_path)
     try:
@@ -246,7 +248,7 @@ def run_candidate_generator(question, db_path):
     # print(results)
 
 
-def run_candidate_generator(question, db_path, num_candidates=3):
+def run_candidate_generator(question, db_path, schema, num_candidates=3):
     """
     generating multiple candidate queries....
     
@@ -261,7 +263,7 @@ def run_candidate_generator(question, db_path, num_candidates=3):
       A list of tuples: (final_query, results, error) for each candidate query.
     """
     # 1
-    schema, context = get_schema_and_context(db_path)
+    _, context = get_schema_and_context(db_path)
     
     # 2
     llm = ChatGroq(groq_api_key=groq_api_key, model_name=CANDIDATE_MODEL, temperature=0)
@@ -307,14 +309,28 @@ def run_candidate_generator(question, db_path, num_candidates=3):
 
 if __name__ == "__main__":
 
-    question = "For movie titled 'Welcome to the Dollhouse', what is the percentage of the ratings were rated with highest score."
-    db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
-    schema, context = get_schema_and_context(db_path)
+    question = "What is the average rating score of the movie \"When Will I Be Loved\" and who was its director?"
+    db_path = "D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite"
+    db_manager = DBManager(db_path)
+    schema = db_manager.schema
+
+    spacy_model = spacy.load("en_core_web_sm")
+    bert_model = SentenceTransformer("all-MiniLM-L6-v2")
+    print("loaded models mf")
+    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=80, similarity_threshold=0.4)
+    new_schema = {}
+    for table in selected_schema:
+        cols = []
+        for col in selected_schema[table]:
+            cols.append(col)
+        new_schema[table] = cols
+    
+    _, context = get_schema_and_context(db_path)
     print("Extracted Schema:")
-    print(schema)
+    print(new_schema)
     print("\nExtracted Context:")
     print(context)
 
-    res = run_candidate_generator(question, db_path, 3)
+    res = run_candidate_generator(question, db_path, new_schema, 3)
     print("\n final candidates:")
     print(res)

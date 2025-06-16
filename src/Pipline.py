@@ -9,7 +9,7 @@ from pipeline.question_processing.schema_selector import *
 
 if __name__ == "__main__":
 
-    question = "Among the lists created by user 4208563, which one has the highest number of followers? Indicate how many followers it has and whether the user was a subscriber or not when he created the list."
+    question = "insert a new movie 'Inception' with rating 8.8 and release year 2010 into the database"
     db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
     candidates = []
     db_manager = DBManager(db_path)
@@ -25,7 +25,7 @@ if __name__ == "__main__":
             cols.append(col)
         new_schema[table] = cols
 
-    _, context = get_schema_and_context(db_path)
+    new_schema, context = get_schema_and_context(db_path)
     print("Extracted Schema:")
     print(new_schema)
     print("\nExtracted Context:")

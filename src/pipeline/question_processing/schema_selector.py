@@ -25,7 +25,7 @@ def fuzzy_match_phrases(question, schema, spacy_model, threshold=70):
                     matches.add((table, column))
     return matches
 
-def semantic_similarity(question, schema, bert_model, threshold=0.4):
+def semantic_similarity(question, schema, embeddings, bert_model, threshold=0.4):
     """Compute semantic similarity between keywords and column descriptions."""
     question_vec = bert_model.encode(question, convert_to_tensor=True)
     similarities = set()
@@ -34,7 +34,7 @@ def semantic_similarity(question, schema, bert_model, threshold=0.4):
             desc = schema[table][col]
             score = 0
             if desc != "":
-                desc_vec = bert_model.encode(desc, convert_to_tensor=True)
+                desc_vec = embeddings[table][col]
                 score = util.cos_sim(question_vec, desc_vec).item()
             else:
                 col_vec = bert_model.encode(col, convert_to_tensor=True)
@@ -44,9 +44,9 @@ def semantic_similarity(question, schema, bert_model, threshold=0.4):
 
     return similarities
 
-def select_schema(question, schema : dict[str, dict[str,str]], spacy_model, bert_model, fuzz_threshold=80, similarity_threshold=0.4):
+def select_schema(question, schema : dict[str, dict[str,str]], embeddings, spacy_model, bert_model, fuzz_threshold=80, similarity_threshold=0.4):
     fuzzy = fuzzy_match_phrases(question, schema, spacy_model, threshold=fuzz_threshold)
-    semantic = semantic_similarity(question, schema, bert_model, threshold=similarity_threshold)
+    semantic = semantic_similarity(question, schema, embeddings, bert_model, threshold=similarity_threshold)
     related_schema = fuzzy.union(semantic)
     selected_schema = {}
     # Remove unrelated columns
@@ -65,7 +65,8 @@ if __name__ == '__main__':
     bert_model = SentenceTransformer("all-MiniLM-L6-v2")
     db_manager = DBManager("D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite")
     schema = db_manager.schema
-    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=70, similarity_threshold=0.4)
+    embeddings = db_manager.embeddings
+    selected_schema = select_schema(question, schema, embeddings, spacy_model, bert_model, fuzz_threshold=70, similarity_threshold=0.4)
     before = 0
     for table in schema:
         for col in schema[table]:

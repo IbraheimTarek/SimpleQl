@@ -1,14 +1,27 @@
 import sqlite3
 from typing import Dict, List, Tuple
+import pickle
+import os
+from models import get_embedding_model
+
 
 class DBManager:
     def __init__(self, db_path: str):
+        self.setDatabase(db_path)
+
+    def setDatabase(self, db_path : str):
         self.db_path = db_path
+        self.db_name = os.path.splitext(os.path.basename(self.db_path))[0]
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
         self.schema = self.loadSchema()
         self.primary_keys, self.foreign_keys = self.loadRelationships(self.schema)
+        embedding_model = get_embedding_model()
+        self.embeddings = self.embedDescriptions(embedding_model)
+        os.makedirs(f"databases/{self.db_name}", exist_ok=True)
+
+
 
     def loadSchema(self) -> Dict[str, Dict[str, str]]:
         """
@@ -29,7 +42,7 @@ class DBManager:
         tables = [row["name"] for row in self.cursor.fetchall()]
 
         for table in tables:
-            self.cursor.execute(f"PRAGMA table_info({table});")
+            self.cursor.execute(f"PRAGMA table_info('{table}');")
             columns = self.cursor.fetchall()
 
             column_info = {}
@@ -47,7 +60,7 @@ class DBManager:
 
         for table in schema:
             # Get primary key
-            self.cursor.execute(f"PRAGMA table_info({table});")
+            self.cursor.execute(f"PRAGMA table_info('{table}');")
             columns = self.cursor.fetchall()
             if table not in primary_keys:
                 primary_keys[table] = []
@@ -57,7 +70,7 @@ class DBManager:
             
         for table in schema:           
             # Get foreign key relationships
-            self.cursor.execute(f"PRAGMA foreign_key_list({table});")
+            self.cursor.execute(f"PRAGMA foreign_key_list('{table}');")
             fks = self.cursor.fetchall()
             foreign_keys[table] = []
             for fk in fks:
@@ -70,6 +83,33 @@ class DBManager:
     
     def setDescription(self, table_name : str, column_name : str, desc: str):
         self.schema[table_name][column_name] = desc
+
+    def embedDescriptions(self, embedding_model):
+        embeddings = {}
+        for table in self.schema:
+            embeddings[table] = {}
+            for col in self.schema[table]:
+                desc = self.schema[table][col]
+                if desc != "":
+                    desc_emb = embedding_model.encode(desc, convert_to_tensor=True)
+                    embeddings[table][col] = desc_emb
+        return embeddings
+    
+    def saveDescToFile(self):
+        with open(f'databases/{self.db_name}/embeddings.pkl', 'wb') as f:
+            pickle.dump(self.embeddings, f)
+
+    def loadDescFromFile(self):
+        with open(f'databases/{self.db_name}/embeddings.pkl', 'rb') as f:
+            self.embeddings = pickle.load(f)
+
+    def saveSchemaToFile(self):
+        with open(f"databases/{self.db_name}/schema.pkl", 'wb') as f:
+            pickle.dump((self.schema, self.primary_keys, self.foreign_keys), f)
+
+    def loadSchemaFromFile(self):
+        with open(f"databases/{self.db_name}/schema.pkl", 'rb') as f:
+            self.schema, self.primary_keys, self.foreign_keys = pickle.load(f)
     
 
 if __name__ == '__main__':

@@ -1,40 +1,27 @@
-from langchain_groq import ChatGroq
 import pandas as pd
 from pipeline.query_generator.CandidateGenerator import *
 from pipeline.plotter.Plotter import *
 from pipeline.query_generator.ValidateQueries import UnitTester 
 from database_manager import DBManager
 from pipeline.question_processing.schema_selector import *
+from models import get_spacy_model, get_embedding_model
 
 
-if __name__ == "__main__":
-
-    question = "insert a new movie 'Inception' with rating 8.8 and release year 2010 into the database"
-    db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
-    candidates = []
-    db_manager = DBManager(db_path)
+def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0.4):
+    spacy_model = get_spacy_model()
+    bert_model = get_embedding_model()
     schema = db_manager.schema
-    spacy_model = spacy.load("en_core_web_sm")
-    bert_model = SentenceTransformer("all-MiniLM-L6-v2")
-    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=80, similarity_threshold=0.4)
-
-    new_schema = {}
-    for table in selected_schema:
-        cols = []
-        for col in selected_schema[table]:
-            cols.append(col)
-        new_schema[table] = cols
-
-    new_schema, context = get_schema_and_context(db_path)
+    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=fuzz_threshold, similarity_threshold=similarity_threshold)
+    candidates = []
+    _, context = get_schema_and_context(db_path)
     print("Extracted Schema:")
-    print(new_schema)
+    print(selected_schema)
     print("\nExtracted Context:")
     print(context)
 
     res = run_candidate_generator(question, db_path, new_schema, 3)
     print("\n final candidates:")
     print(res)
-
     if res:
         for candidate_query, rows, error in res:
             candidates.append(candidate_query)
@@ -48,13 +35,27 @@ if __name__ == "__main__":
         df_result = pd.DataFrame(rows, columns=columns)
         print(df_result.head())
 
+        return best_query, rows, columns
+    
+        #TODO: plotting
 
-        # viz_tool = DataVizTool(df_result)
+    else:
+        # maybe return a type of error string
+        return None
+    
+if __name__ == "__main__":
 
-        # img_path = viz_tool.run("Plot the distribution of ratings")
+    question = "insert a new movie 'Inception' with rating 8.8 and release year 2010 into the database"
+    db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
+    db_manager = DBManager(db_path)
+    run_pipeline(question, db_manager)
+    
+    # viz_tool = DataVizTool(df_result)
 
-        # print("Saved chart to ", img_path)
+    # img_path = viz_tool.run("Plot the distribution of ratings")
+
+    # print("Saved chart to ", img_path)
 
 
-        # if inside Streamlit:
-        #st.image(img_path, caption="Auto-generated plot")
+    # if inside Streamlit:
+    #st.image(img_path, caption="Auto-generated plot")

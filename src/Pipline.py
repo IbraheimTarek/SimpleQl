@@ -35,25 +35,26 @@ if __name__ == "__main__":
     print("\n final candidates:")
     print(res)
 
-    for candidate_query, rows, error in res:
-        candidates.append(candidate_query)
+    if res:
+        for candidate_query, rows, error in res:
+            candidates.append(candidate_query)
 
-    print("\nCandidates:", candidates)
-    tester = UnitTester(k_unit_tests=4)
-    best_query = tester.choose_best((question), candidates)
-    print("\nBest query after validation:", best_query)
-    rows, columns, _ = execute_query_rows_columns(db_path, best_query)
+        print("\nCandidates:", candidates)
+        tester = UnitTester(k_unit_tests=4)
+        best_query = tester.choose_best((question), candidates)
+        print("\nBest query after validation:", best_query)
+        rows, columns, _ = execute_query_rows_columns(db_path, best_query)
 
-    df_result = pd.DataFrame(rows, columns=columns)
-    print(df_result.head())
-
-
-    # viz_tool = DataVizTool(df_result)
-
-    # img_path = viz_tool.run("Plot the distribution of ratings")
-
-    # print("Saved chart to ", img_path)
+        df_result = pd.DataFrame(rows, columns=columns)
+        print(df_result.head())
 
 
-    # if inside Streamlit:
-    #st.image(img_path, caption="Auto-generated plot")
+        # viz_tool = DataVizTool(df_result)
+
+        # img_path = viz_tool.run("Plot the distribution of ratings")
+
+        # print("Saved chart to ", img_path)
+
+
+        # if inside Streamlit:
+        #st.image(img_path, caption="Auto-generated plot")

@@ -9,7 +9,7 @@ from pipeline.question_processing.schema_selector import *
 
 if __name__ == "__main__":
 
-    question = "Among the lists created by user 4208563, which one has the highest number of followers? Indicate how many followers it has and whether the user was a subscriber or not when he created the list."
+    question = "insert a new movie 'Inception' with rating 8.8 and release year 2010 into the database"
     db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
     candidates = []
     db_manager = DBManager(db_path)
@@ -25,7 +25,7 @@ if __name__ == "__main__":
             cols.append(col)
         new_schema[table] = cols
 
-    _, context = get_schema_and_context(db_path)
+    new_schema, context = get_schema_and_context(db_path)
     print("Extracted Schema:")
     print(new_schema)
     print("\nExtracted Context:")
@@ -35,25 +35,26 @@ if __name__ == "__main__":
     print("\n final candidates:")
     print(res)
 
-    for candidate_query, rows, error in res:
-        candidates.append(candidate_query)
+    if res:
+        for candidate_query, rows, error in res:
+            candidates.append(candidate_query)
 
-    print("\nCandidates:", candidates)
-    tester = UnitTester(k_unit_tests=4)
-    best_query = tester.choose_best((question), candidates)
-    print("\nBest query after validation:", best_query)
-    rows, columns, _ = execute_query_rows_columns(db_path, best_query)
+        print("\nCandidates:", candidates)
+        tester = UnitTester(k_unit_tests=4)
+        best_query = tester.choose_best((question), candidates)
+        print("\nBest query after validation:", best_query)
+        rows, columns, _ = execute_query_rows_columns(db_path, best_query)
 
-    df_result = pd.DataFrame(rows, columns=columns)
-    print(df_result.head())
-
-
-    # viz_tool = DataVizTool(df_result)
-
-    # img_path = viz_tool.run("Plot the distribution of ratings")
-
-    # print("Saved chart to ", img_path)
+        df_result = pd.DataFrame(rows, columns=columns)
+        print(df_result.head())
 
 
-    # if inside Streamlit:
-    #st.image(img_path, caption="Auto-generated plot")
+        # viz_tool = DataVizTool(df_result)
+
+        # img_path = viz_tool.run("Plot the distribution of ratings")
+
+        # print("Saved chart to ", img_path)
+
+
+        # if inside Streamlit:
+        #st.image(img_path, caption="Auto-generated plot")

@@ -13,6 +13,14 @@ from pipeline.question_processing.schema_selector import *
 load_dotenv()
 groq_api_key = os.getenv('GROQ_API_KEY')
 
+FORBIDDEN_TOKENS = re.compile(
+    r"\b("
+    r"INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|REPLACE|MERGE|"
+    r"GRANT|REVOKE|PRAGMA|ATTACH|DETACH|EXEC|EXECUTE|CALL"
+    r")\b",
+    flags=re.I,
+)
+
 class CandidateGenerator:
     """
     CandidateGenerator (CG) synthesizes SQL queries to answer a natural language question.
@@ -99,6 +107,36 @@ Return only the revised SQL query.
         return response
 
 
+
+def is_safe_select(sql: str) -> bool:
+    """
+    Return True iff `sql` appears to be a single read-only statement.
+    Rules
+    -----
+    1. First non-comment token must be SELECT or WITH.
+    2. No forbidden keywords (DML / DDL / admin) anywhere outside strings.
+    3. At most one semicolon, and only as the final char (optional).
+    """
+
+    # strip leading comments / whitespace
+    sql_no_comments = re.sub(r"--.*?$|/\*.*?\*/", "", sql, flags=re.S | re.M).strip()
+
+    # first word
+    first_word = re.match(r"^\s*(\w+)", sql_no_comments, flags=re.I)
+    if not first_word or first_word.group(1).upper() not in {"SELECT", "WITH"}:
+        return False
+
+    #  forbidden tokens 
+    if FORBIDDEN_TOKENS.search(sql_no_comments):
+        return False
+
+    parts = re.split(r";", sql_no_comments)
+    if len(parts) > 2:                       # more than one semicolon
+        return False
+    if len(parts) == 2 and parts[1].strip(): # trailing text after last semicolon
+        return False
+
+    return True
 
 def clean_sql(sql_str: str) -> str:
 
@@ -213,39 +251,6 @@ def get_schema_and_context(db_path):
     context_str = f"The database contains the following tables: {', '.join(table_names)}."
     return schema_str, context_str
 
-def run_candidate_generator(question, db_path):
-    schema, context = get_schema_and_context(db_path)
-    llm = ChatGroq(groq_api_key=groq_api_key, model_name=CANDIDATE_MODEL,temperature=0) 
-    candidate_generator = CandidateGenerator(llm=llm)
-
-    candidate_query = candidate_generator.generate_candidate_query(question, schema, context)
-    # print("Generated Candidate Query:")
-    # print(candidate_query)
-    
-    results, error = execute_query(db_path, candidate_query)
-    revision_count = 0
-
-    while (error is not None or (results is not None and len(results) == 0)) and revision_count < candidate_generator.max_revisions:
-        issue_description = error if error is not None else "Empty result returned"
-        print("\nIssue encountered: ", issue_description)
-        
-        candidate_query = candidate_generator.revise_query(
-            question=question,
-            schema=schema,
-            context=context,
-            faulty_query=candidate_query,
-            error_description=issue_description
-        )
-        # print("\nRevised Candidate Query (Attempt {}):".format(revision_count + 1))
-        # print(candidate_query)
-        
-        results, error = execute_query(db_path, candidate_query)
-        revision_count += 1
-
-    # print("\nFinal Query:")
-    # print(candidate_query)
-    # print("\nQuery Results:")
-    # print(results)
 
 
 def run_candidate_generator(question, db_path, schema, num_candidates=3):
@@ -262,6 +267,7 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
     Returns:
       A list of tuples: (final_query, results, error) for each candidate query.
     """
+    unsafe = False
     # 1
     _, context = get_schema_and_context(db_path)
     
@@ -277,6 +283,10 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
         print("Generated Candidate Query:")
         print(candidate_query)
         # 3
+        if not is_safe_select(candidate_query):
+            unsafe = True         # execution failed
+            break
+
         results, error = execute_query(db_path, candidate_query)
         revision_count = 0
         # 4
@@ -303,7 +313,11 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
         print(results)
         # done
         all_candidates.append((candidate_query, results, error))
-    
+
+    if unsafe:
+        print("Unsafe query detected. Stopping further processing.")
+        return all_candidates
+
     return all_candidates
 
 

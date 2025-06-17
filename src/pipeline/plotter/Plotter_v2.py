@@ -216,19 +216,43 @@ class DataVizTool(BaseTool):
 
     def _run(self, request: str) -> str:
         info_list = []
-        if self._df.shape[0] > 1:
+        if self._df.shape[0] > 1: # handel  (max min avg query)
             for col in self._df.columns:
                 dtype = self._df[col].dtype
                 nunique = self._df[col].nunique()
-                uniqued = nunique == self._df.shape[0]
-                info_list.append((col, dtype, nunique, uniqued, nunique/self._df.shape[0]))
+                uniqued=False
+                if nunique==self._df.shape[0]:
+                    uniqued=True
+                    
+                info_list.append((col, dtype, nunique,uniqued,nunique/self._df.shape[0]))
         info_df = pd.DataFrame(info_list, columns=['Column Name', 'Data Type', 'UniqueValues','Is_Unique_valued','unique_over_size'])
 
-        # Exclude ID columns
-        valid_cols = info_df[~((info_df['Data Type'] == 'object') & (info_df['Is_Unique_valued'] == True))]
-        valid_cols = info_df[~info_df["Column Name"].str.lower().apply(is_id_column)]
+        #### Exclude columns
+        valid_cols = info_df.copy()
+
+        # Unique_valued cat features 
+        if len(valid_cols)==0:
+            return "No plots needed"
+        valid_cols = valid_cols[~((valid_cols['Data Type'] == 'object') & (valid_cols['Is_Unique_valued'] == True))]
+        # Unique_valued  numerical features
+        if len(valid_cols)==0:
+            return "No plots needed"
+        valid_cols = valid_cols[~((valid_cols['Data Type'] != 'object') & (valid_cols['Is_Unique_valued'] == True))]
+        # Id colums
+        if len(valid_cols)==0:
+            return "No plots needed"
+        valid_cols = valid_cols[~valid_cols["Column Name"].str.lower().apply(is_id_column)]
+        # one valued 
+        if len(valid_cols)==0:
+            return "No plots needed"
+        valid_cols = valid_cols[~(valid_cols['UniqueValues'] == 1)]
+
+        if len(valid_cols)==0:
+            return "No plots needed"
+        
         print(valid_cols['Column Name'])
 
+        
         num_cols = valid_cols[valid_cols["Data Type"].apply(lambda x: np.issubdtype(np.dtype(x), np.number))]["Column Name"].tolist()
         cat_cols = valid_cols[valid_cols["Data Type"].apply(lambda x: not np.issubdtype(np.dtype(x), np.number))]["Column Name"].tolist()
 
@@ -271,17 +295,17 @@ class DataVizTool(BaseTool):
 
 if __name__ == "__main__":
     df_result = pd.DataFrame({
-    'id': range(1, 21),
-    'gender': np.random.choice(['Male', 'Female'], size=20),
-    'age': np.random.randint(18, 65, size=20),
-    'department': np.random.choice(['HR', 'IT', 'Sales', 'Finance'], size=20),
-    'salary': np.random.randint(30000, 100000, size=20),
-    'status': np.random.choice(
-        ['Active', 'Inactive', 'On Leave', 'Fired', 'Retired', 'Suspended',
-         'Pending', 'Resigned', 'Training', 'Intern', 'Part-time', 'Contract'], size=20),
-    'rating': np.round(np.random.uniform(1.0, 5.0, size=20), 1),
-    'region': np.random.choice(['East', 'West', 'North', 'South', 'Central', 'Northeast', 'Southwest', 'Midwest'], size=20),
-    'team': np.random.choice([f'Team{i}' for i in range(1, 16)], size=20)
+    'id': ["ahmed","mohammed","fawzy"],
+    # 'gender': np.random.choice(['Male', 'Female'], size=20),
+    # 'age': np.random.randint(18, 65, size=20),
+    # 'department': np.random.choice(['HR', 'IT', 'Sales', 'Finance'], size=20),
+    # 'salary': np.random.randint(30000, 100000, size=20),
+    # 'status': np.random.choice(
+    #     ['Active', 'Inactive', 'On Leave', 'Fired', 'Retired', 'Suspended',
+    #      'Pending', 'Resigned', 'Training', 'Intern', 'Part-time', 'Contract'], size=20),
+    # 'rating': np.round(np.random.uniform(1.0, 5.0, size=20), 1),
+    # 'region': np.random.choice(['East', 'West', 'North', 'South', 'Central', 'Northeast', 'Southwest', 'Midwest'], size=20),
+    # 'team': np.random.choice([f'Team{i}' for i in range(1, 16)], size=20)
 })
 
     viz_tool = DataVizTool(df_result)

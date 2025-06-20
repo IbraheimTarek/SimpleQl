@@ -2,24 +2,26 @@ import pandas as pd
 from pipeline.query_generator.CandidateGenerator import *
 from pipeline.plotter.Plotter import *
 from pipeline.query_generator.ValidateQueries import UnitTester 
-from database_manager import DBManager
 from pipeline.question_processing.schema_selector import *
+from pipeline.plotter.Plotter_v2 import DataVizTool
 from models import get_spacy_model, get_embedding_model
+from database_manager import DBManager
 
 
 def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0.4):
     spacy_model = get_spacy_model()
     bert_model = get_embedding_model()
     schema = db_manager.schema
-    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=fuzz_threshold, similarity_threshold=similarity_threshold)
+    embeddings = db_manager.embeddings
+    selected_schema = select_schema(question, schema, embeddings, spacy_model, bert_model, fuzz_threshold=fuzz_threshold, similarity_threshold=similarity_threshold)
     candidates = []
-    _, context = get_schema_and_context(db_path)
+    _, context = get_schema_and_context(db_manager.db_path)
     print("Extracted Schema:")
     print(selected_schema)
     print("\nExtracted Context:")
     print(context)
 
-    res = run_candidate_generator(question, db_path, new_schema, 3)
+    res = run_candidate_generator(question, db_manager.db_path, selected_schema, 3)
     print("\n final candidates:")
     print(res)
     if res:
@@ -30,10 +32,12 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
         tester = UnitTester(k_unit_tests=4)
         best_query = tester.choose_best((question), candidates)
         print("\nBest query after validation:", best_query)
-        rows, columns, _ = execute_query_rows_columns(db_path, best_query)
+        rows, columns, _ = execute_query_rows_columns(db_manager.db_path, best_query)
 
         df_result = pd.DataFrame(rows, columns=columns)
         print(df_result.head())
+
+
 
         return best_query, rows, columns
     

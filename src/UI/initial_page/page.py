@@ -190,7 +190,7 @@ class InitialPage(QWidget):
         QTimer.singleShot(500, done_callback)
 
     def step2(self, done_callback):
-        setup(self.db_path)
+        self.db_manager = DBManager(self.db_path)
         QTimer.singleShot(700, done_callback)
 
     # for fancy loading
@@ -200,10 +200,4 @@ class InitialPage(QWidget):
     # for fancy loading
     def step4(self, done_callback):
         QTimer.singleShot(100, done_callback)
-
-def setup(db_path):
-    db_manager = DBManager(db_path)
-    db_manager.saveSchemaToFile()
-    db_manager.saveDescToFile()
-
-    
+        

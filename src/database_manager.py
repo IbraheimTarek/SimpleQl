@@ -15,12 +15,18 @@ class DBManager:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
-        self.schema = self.loadSchema()
-        self.primary_keys, self.foreign_keys = self.loadRelationships(self.schema)
-        embedding_model = get_embedding_model()
-        self.embeddings = self.embedDescriptions(embedding_model)
-        os.makedirs(f"databases/{self.db_name}", exist_ok=True)
-
+        # New connected database
+        if not os.path.isdir(f"history/databases/{self.db_name}"):
+            os.makedirs(f"history/databases/{self.db_name}")
+            self.schema = self.loadSchema()
+            self.primary_keys, self.foreign_keys = self.loadRelationships(self.schema)
+            embedding_model = get_embedding_model()
+            self.embeddings = self.embedDescriptions(embedding_model)
+            self.saveDescToFile()
+            self.saveSchemaToFile()
+        else: # was connected before
+            self.loadSchemaFromFile()
+            self.loadDescFromFile()
 
 
     def loadSchema(self) -> Dict[str, Dict[str, str]]:
@@ -96,22 +102,21 @@ class DBManager:
         return embeddings
     
     def saveDescToFile(self):
-        with open(f'databases/{self.db_name}/embeddings.pkl', 'wb') as f:
+        with open(f'history/databases/{self.db_name}/embeddings.pkl', 'wb') as f:
             pickle.dump(self.embeddings, f)
 
     def loadDescFromFile(self):
-        with open(f'databases/{self.db_name}/embeddings.pkl', 'rb') as f:
+        with open(f'history/databases/{self.db_name}/embeddings.pkl', 'rb') as f:
             self.embeddings = pickle.load(f)
 
     def saveSchemaToFile(self):
-        with open(f"databases/{self.db_name}/schema.pkl", 'wb') as f:
+        with open(f"history/databases/{self.db_name}/schema.pkl", 'wb') as f:
             pickle.dump((self.schema, self.primary_keys, self.foreign_keys), f)
 
     def loadSchemaFromFile(self):
-        with open(f"databases/{self.db_name}/schema.pkl", 'rb') as f:
+        with open(f"history/databases/{self.db_name}/schema.pkl", 'rb') as f:
             self.schema, self.primary_keys, self.foreign_keys = pickle.load(f)
     
-
 if __name__ == '__main__':
     db_manager = DBManager("D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite")
     print(db_manager.schema)

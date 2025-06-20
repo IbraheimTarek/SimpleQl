@@ -3,6 +3,6 @@ datasets
 plots
 *.pyc
 __pycache__
-databases
-playground.ipynb
+history
+models
 

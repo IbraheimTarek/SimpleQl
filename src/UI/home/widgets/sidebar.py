@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
 import json
+import pandas as pd
+from plotter.Plotter_v2 import DataVizTool
 from UI.home.widgets.result_button import ResultButton
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame, QScrollArea, QMessageBox, QFileDialog                          
@@ -98,13 +100,6 @@ class Sidebar(QFrame):
         self.buttons_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_layout.setSpacing(4)
         
-        dir = f"history/databases/{self.db_name}/query_results"
-        if os.path.isdir(dir):
-            self.query_counter = len(os.listdir(dir))
-        else:
-            os.makedirs(dir)
-            self.query_counter = 0
-
         # Empty state label
         self.empty_label = QLabel("لم يتم تنفيذ اي اسئلة بعد \n قم بتنفيذ اي سؤال عن بياناتك ")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -122,9 +117,6 @@ class Sidebar(QFrame):
         # Add stretch to push buttons to top
         self.buttons_layout.addStretch()
         
-        if self.query_counter != 0:
-            self.empty_label.hide()
-
         self.buttons_container.setLayout(self.buttons_layout)
         scroll_area.setWidget(self.buttons_container)
         
@@ -187,27 +179,31 @@ class Sidebar(QFrame):
         main_layout.addWidget(self.change_db_button)
 
         self.load_query_results()
+
+        if self.query_counter != 0:
+            self.empty_label.hide()
         
         self.setLayout(main_layout)
     
-    def add_query_result(self, query_text, query_sql, rows, columns, plots):
+    def add_query_result(self, query_text, query_sql, rows, columns):
         """Add a new query result to the sidebar"""
         self.query_counter += 1
         timestamp = datetime.now().strftime("%H:%M:%S")
         
         # Create file path for storing result
-        filename = f"query_{self.query_counter}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        file_path = os.path.join(self.results_directory, filename)
+        filename = f"{self.query_counter}.json"
+        dir = self.results_directory + f"/{self.query_counter}"
+        os.makedirs(dir)
+        file_path = os.path.join(dir, filename)
         
         # Save result data to file
         result_info = {
-            "query_id": filename,
+            "query_id": self.query_counter,
             "query_text": query_text,
             "timestamp": timestamp,
             "query_sql": query_sql,
             "rows": rows,
             "columns": columns,
-            "plots": plots
         }
         
         try:
@@ -217,6 +213,11 @@ class Sidebar(QFrame):
             print(f"Error saving result: {e}")
             return
         
+        # Make plots
+        df = pd.DataFrame(rows, columns=columns)
+        plotter = DataVizTool(df, f"{self.results_directory}/{self.query_counter}/plots")
+        plotter._run("Plot automatically")
+        
         # Remove empty label if this is the first query
         if len(self.query_buttons) == 0:
             self.empty_label.hide()
@@ -225,7 +226,7 @@ class Sidebar(QFrame):
         # Create new button
         button = ResultButton(
             query_text,
-            file_path
+            self.query_counter
         )
         button.clicked.connect(lambda: self.on_result_clicked(button))
         
@@ -241,19 +242,19 @@ class Sidebar(QFrame):
         self.on_result_clicked(button)
     
     def load_query_results(self):
-        if self.query_counter == 0:
-            return
-        
-        self.clear_button.setEnabled(True)
+        if not os.path.isdir(self.results_directory):
+            os.makedirs(self.results_directory)
+            self.query_counter = 0
 
-        for filename in os.listdir(self.results_directory):
-            file_path = os.path.join(self.results_directory, filename)
+        for dir in os.listdir(self.results_directory):
+            self.query_counter += 1
+            file_path = os.path.join(self.results_directory, dir + f"/{self.query_counter}.json")
             print(file_path)
             with open(file_path, 'r', encoding='utf-8') as f:
                 result = json.load(f)
             button = ResultButton(
                 result['query_text'],
-                file_path
+                self.query_counter
             )
             button.clicked.connect(lambda _, b=button: self.on_result_clicked(b))
             
@@ -264,11 +265,14 @@ class Sidebar(QFrame):
             
             # Add to tracking list
             self.query_buttons.append(button)
+
+            if self.query_counter != 0:
+                self.clear_button.setEnabled(True)
                  
     def on_result_clicked(self, clicked_button):
         """Handle result button click"""
         self.select_button(clicked_button)
-        self.result_clicked.emit(clicked_button.file_path)
+        self.result_clicked.emit(f"{self.results_directory}/{clicked_button.query_id}")
     
     def select_button(self, selected_button):
         """Select a button and deselect others"""

@@ -1,9 +1,8 @@
 import pandas as pd
 from pipeline.query_generator.CandidateGenerator import *
-from pipeline.plotter.Plotter import *
+from plotter.Plotter import *
 from pipeline.query_generator.ValidateQueries import UnitTester 
 from pipeline.question_processing.schema_selector import *
-from pipeline.plotter.Plotter_v2 import DataVizTool
 from models import get_spacy_model, get_embedding_model
 from database_manager import DBManager
 
@@ -37,12 +36,7 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
         df_result = pd.DataFrame(rows, columns=columns)
         print(df_result.head())
 
-
-
         return best_query, rows, columns
-    
-        #TODO: plotting
-
     else:
         # maybe return a type of error string
         return None

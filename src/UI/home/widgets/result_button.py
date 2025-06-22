@@ -3,12 +3,12 @@ from PyQt6.QtWidgets import QPushButton
 class ResultButton(QPushButton):
     """Custom button for query results in sidebar"""
     
-    def __init__(self, query_text, file_path, parent=None):
+    def __init__(self, query_text, query_id, parent=None):
         super().__init__(parent)
-        self.file_path = file_path
+        self.query_id = query_id
         self.query_text = query_text
         # Create display text
-        short_query = self.query_text[:35] + "..." if len(self.query_text) > 30 else self.query_text
+        short_query = self.query_text[:35] + "..." if len(self.query_text) > 35 else self.query_text
         
         self.setText(short_query)
         self.setFixedHeight(40)

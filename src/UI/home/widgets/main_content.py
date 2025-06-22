@@ -1,12 +1,13 @@
 import json
+import os
 from UI.home.widgets.textbox import TextBox
-from UI.home.widgets.interactive_plot import InteractivePlot
+from UI.home.widgets.plot_widget import PlotWidget
 
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit, 
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit, QWidget, QScrollArea,
     QDialog, QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication
 )                         
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, pyqtSignal, QSize
 
 
 class MainContent(QFrame):
@@ -138,27 +139,36 @@ class MainContent(QFrame):
         """)
         layout.addWidget(self.plots_label)
         
-        #TODO: plots
-        self.plots_layout = QHBoxLayout()
-        layout.addLayout(self.plots_layout)
-        # self.plots_area = QTextEdit()
-        # self.plots_area.setReadOnly(True)
-        # self.plots_area.setPlaceholderText("Plots will appear here...")
-        # self.plots_area.setStyleSheet("""
-        #     QTextEdit {
-        #         border: 2px solid #E5E7EB;
-        #         border-radius: 8px;
-        #         padding: 12px;
-        #         font-family: 'Consolas', 'Monaco', monospace;
-        #         font-size: 12px;
-        #         background-color: #F9FAFB;
-        #         color: #1F2937;
-        #     }
-        # """)
-        # self.plots_area.setMinimumHeight(150)
-        # layout.addWidget(self.plots_area)
+        # plots
+        self.plots_area = QScrollArea()
+        self.plots_area.setWidgetResizable(True)
+        self.plots_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.plots_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.plots_area.setFixedHeight(250)
+        self.plots_container = QWidget()
+        self.plots_layout = QHBoxLayout(self.plots_container)
+        self.plots_area.setWidget(self.plots_container)
+        layout.addWidget(self.plots_area)
 
-        # Results area placeholder
+        self.plots_empty = QTextEdit()
+        self.plots_empty.setReadOnly(True)
+        self.plots_empty.setPlaceholderText("لم يتم انتاج اي رسومات لهذا السؤال")
+        self.plots_empty.setStyleSheet("""
+            QTextEdit {
+                border: 2px solid #E5E7EB;
+                border-radius: 8px;
+                padding: 12px;
+                font-family: 'Consolas', 'Monaco', monospace;
+                font-size: 12px;
+                font-weight: bold;
+                background-color: #F9FAFB;
+                color: #1F2937;
+            }
+        """)
+        self.plots_empty.setMinimumHeight(150)
+        layout.addWidget(self.plots_empty)
+
+        # Results area
         self.results_label = QLabel("البيانات الناتجة")
         self.results_label.setStyleSheet("""
             QLabel {
@@ -183,6 +193,7 @@ class MainContent(QFrame):
         if self.initial:
             self.plots_area.hide()
             self.plots_label.hide()
+            self.plots_empty.hide()
 
             self.results_area.hide()
             self.results_label.hide()
@@ -203,6 +214,8 @@ class MainContent(QFrame):
         else:
             self.plots_area.show()
             self.plots_label.show()
+            self.plots_empty.show()
+
 
             self.results_area.show()
             self.results_label.show()
@@ -307,17 +320,44 @@ class MainContent(QFrame):
 
         dialog.exec()
     
-    def load_result_from_file(self, file_path):
+    def load_result_from_file(self, folder_path):
         """Load and display result from file"""
-        if not file_path:  # Empty path means clear all results and go to initial state
+        if not folder_path:  # Empty path means clear all results and go to initial state
             self.initial = True
             self.update_ui(self.initial)
             return
             
         self.initial = False
         self.update_ui(self.initial)
-        with open(file_path, 'r', encoding='utf-8') as f:
-            result = json.load(f)
+        has_plots = False
+        for f in os.listdir(folder_path):
+            path = os.path.join(folder_path, f)
+            if os.path.isfile(path):
+                # Load results
+                print(f"File: {path}")
+                with open(path, 'r', encoding='utf-8') as f:
+                    result = json.load(f)
+            else:
+                # Load plots
+                print(f"Directory : {path}")
+                self.plots_layout.addStretch()
+                for plot in os.listdir(path):
+                    plot_path = os.path.join(path, plot)
+                    print(f"Plot: {plot_path}")
+                    plot_widget = PlotWidget(plot_path, QSize(200, 200))
+                    plot_widget.setStyleSheet("""
+                        margin: 0 10px;
+                    """)
+                    self.plots_layout.addWidget(plot_widget)
+                    has_plots = True
+                self.plots_layout.addStretch()
+
+        if has_plots:
+            self.plots_area.show()
+            self.plots_empty.hide()
+        else:
+            self.plots_area.hide()
+            self.plots_empty.show()
         
         # Display the loaded result
         columns = result['columns']
@@ -326,7 +366,7 @@ class MainContent(QFrame):
         self.results_area.setHorizontalHeaderLabels(columns)
         row_count = min(len(rows), 100)
         self.results_area.setRowCount(row_count)
-        for i, row in enumerate(rows[:row_count - 1]):
+        for i, row in enumerate(rows[:row_count]):
             for j, value in enumerate(row):
                 self.results_area.setItem(i, j, QTableWidgetItem("NULL" if value is None else str(value)))
 
@@ -335,18 +375,7 @@ class MainContent(QFrame):
 
         # load SQL Code
         self.sql_code = result['query_sql']
-
-        #TODO: load plots
-        plots = result['plots']
-        self.plots_layout.addStretch()
-        for plot in plots:
-            plot_widget = InteractivePlot(plot)
-            plot_widget.setStyleSheet("""
-                margin: 0 10px;
-            """)
-            self.plots_layout.addWidget(plot_widget)
-        self.plots_layout.addStretch()
-
+        
     def on_new_question_pressed(self):
         self.update_ui(initial=True)
         self.new_question.emit()

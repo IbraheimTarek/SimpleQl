@@ -13,11 +13,12 @@ class DataVizTool(BaseTool):
     description: ClassVar[str] = "Automatically generate all relevant visualizations from tabular data."
     model_config = {"arbitrary_types_allowed": True}
     _df: pd.DataFrame = PrivateAttr()
+    _plots_dir: str = PrivateAttr()
 
     def __init__(self, df : pd.DataFrame, plots_dir= "plots"):
         super().__init__()
         self._df = df
-        self.plots_dir = plots_dir
+        self._plots_dir = plots_dir
 
     def _run(self, request: str) -> str:
         info_list = []
@@ -95,10 +96,10 @@ class DataVizTool(BaseTool):
 
     # tiny helpers 
     def _ensure_plot_dir(self):
-        if not os.path.exists(self.plots_dir):
-            os.makedirs(self.plots_dir, exist_ok=True)
+        if not os.path.exists(self._plots_dir):
+            os.makedirs(self._plots_dir, exist_ok=True)
 
-    def is_id_column(colname):
+    def is_id_column(self, colname):
         colname = colname.lower()
         pattern = r'(^id$|^id[\-_].*|.*[\-_]id$|.*[\-_]id[\-_].*)'
         return bool(re.match(pattern, colname))
@@ -123,7 +124,7 @@ class DataVizTool(BaseTool):
             plt.title(f'Bar Plot for {col}')
             plt.xticks(rotation=45)
 
-        path = os.path.join(self.plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
+        path = os.path.join(self._plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
         plt.savefig(path, bbox_inches="tight")
         plt.close()
         return path
@@ -173,7 +174,7 @@ class DataVizTool(BaseTool):
             plt.ylabel(col1)
             plt.tight_layout()
 
-        path = os.path.join(self.plots_dir, f"{col1}_{col2}_2cat_{uuid.uuid4().hex}.png")
+        path = os.path.join(self._plots_dir, f"{col1}_{col2}_2cat_{uuid.uuid4().hex}.png")
         plt.savefig(path, bbox_inches="tight")
         plt.close()
         return path
@@ -191,7 +192,7 @@ class DataVizTool(BaseTool):
             plt.title(f'Bar plot of {col}')
             plt.xlabel(col)
             plt.ylabel('Count')
-            path = os.path.join(self.plots_dir, f"{col}_num_bar_{uuid.uuid4().hex}.png")
+            path = os.path.join(self._plots_dir, f"{col}_num_bar_{uuid.uuid4().hex}.png")
             plt.savefig(path, bbox_inches="tight")
             plt.close()
             return path
@@ -222,7 +223,7 @@ class DataVizTool(BaseTool):
         plt.title(f'Boxplot of {col}')
 
         plt.tight_layout()
-        path = os.path.join(self.plots_dir, f"{col}_num_{uuid.uuid4().hex}.png")
+        path = os.path.join(self._plots_dir, f"{col}_num_{uuid.uuid4().hex}.png")
         plt.savefig(path, bbox_inches="tight")
         plt.close()
         return path
@@ -248,7 +249,7 @@ class DataVizTool(BaseTool):
         plt.ylabel(col2)
         plt.tight_layout()
 
-        path = os.path.join(self.plots_dir, f"{col1}_{col2}_2num_{uuid.uuid4().hex}.png")
+        path = os.path.join(self._plots_dir, f"{col1}_{col2}_2num_{uuid.uuid4().hex}.png")
         plt.savefig(path, bbox_inches="tight")
         plt.close()
         return path
@@ -275,7 +276,7 @@ class DataVizTool(BaseTool):
         plt.xticks(rotation=45)
         plt.tight_layout()
 
-        path = os.path.join(self.plots_dir, f"{num_col}_{cat_col}_catnum_{uuid.uuid4().hex}.png")
+        path = os.path.join(self._plots_dir, f"{num_col}_{cat_col}_catnum_{uuid.uuid4().hex}.png")
         plt.savefig(path, bbox_inches="tight")
         plt.close()
 

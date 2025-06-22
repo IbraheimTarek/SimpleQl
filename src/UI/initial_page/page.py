@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize, QTimer, QEvent, QPropertyAnimation
 from PyQt6.QtGui import QFont, QIcon, QPixmap
 
-from UI.widgets.image import ImageWidget
+from UI.initial_page.widgets.image import ImageWidget
 from UI.initial_page.widgets.animated_button import AnimatedButton
 from database_manager import DBManager
 from UI.home.page import MainAppWindow
@@ -14,7 +14,7 @@ from UI.home.page import MainAppWindow
 class InitialPage(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Animated Layout Window")
+        self.setWindowTitle("SimpleQL")
         self.setMinimumSize(800, 600)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
@@ -39,7 +39,7 @@ class InitialPage(QWidget):
         layout.addWidget(image)
 
         # Title
-        title = QLabel("Welcome to SimpleQL")
+        title = QLabel("SimpleQL اهلا بك في")
         title.setFont(QFont("Arial", 22, QFont.Weight.Bold))
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         layout.addWidget(title)
@@ -52,7 +52,7 @@ class InitialPage(QWidget):
         button_layout = QHBoxLayout(button_container)
         button_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.button = AnimatedButton("  Connect to a Database", icon=QIcon(QPixmap('src/UI/assets/database.png')))
+        self.button = AnimatedButton("  اتصل بقاعدة بياناتك", icon=QIcon(QPixmap('src/UI/assets/database.png')))
         self.button.clicked.connect(self.start_process)
 
         button_layout.addStretch()
@@ -91,7 +91,7 @@ class InitialPage(QWidget):
         self.progress_anim.setDuration(1000)  
 
         # Paragraph
-        self.paragraph = QLabel("Ready to explore your data? Click the button above to get started.")
+        self.paragraph = QLabel("هل انت مستعد لاكتشاف بياناتك؟ اضغط الزر اعلاه للبدأ")
         self.paragraph.setWordWrap(True)
         self.paragraph.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.paragraph.setStyleSheet("QLabel { color: grey; padding: 0;}")
@@ -104,17 +104,17 @@ class InitialPage(QWidget):
 
         # Task steps
         self.steps = [
-            ("Connecting to database...", self.step1),
-            ("Making a Pizza...", self.step2),
-            ("Playing League...", self.step3),
-            ("Final Touches...", self.step4)
+            ("يتم الاتصال بقاعدة البيانات...", self.step1),
+            ("يتم عمل بيتزا...", self.step2),
+            ("يتم لعب ليج...", self.step3),
+            ("اللمسات الاخيرة...", self.step4)
         ]
         self.current_step = 0
 
     def start_process(self):
         file_path, _ = QFileDialog.getOpenFileName(
             parent=self,
-            caption="Select Database File",
+            caption="اختر بياناتك (.sql)",
             filter="SQLite Database Files (*.sqlite);;All Files (*)"
         )
 
@@ -146,7 +146,7 @@ class InitialPage(QWidget):
 
     def run_next_step(self):
         if self.failed:
-            self.status_label.setText("Connection failed. Please try again.")
+            self.status_label.setText("لقد تعذر الاتصال. الرجاء حاول مرة اخري")
             self.progress_anim.stop()
             self.progress_anim.setStartValue(self.progress_bar.value())
             self.set_progress_value(0)
@@ -180,9 +180,12 @@ class InitialPage(QWidget):
     def on_progress_complete(self):
         # Prevent multiple calls if signal fires more than once
         self.progress_anim.finished.disconnect(self.on_progress_complete)
+
+        with open('history/curr_database.txt', 'w') as f:
+            f.write(self.db_path)
         
-        self.main_window = MainAppWindow()
-        self.main_window.show()
+        self.main_window = MainAppWindow(self.db_path)
+        self.main_window.showMaximized()
         self.close()
 
     # for fancy loading

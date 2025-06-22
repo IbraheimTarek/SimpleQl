@@ -6,7 +6,7 @@ from Pipline import run_pipeline
 
 class Worker(QObject):
     finished = pyqtSignal()
-    result = pyqtSignal(str, str, list, list, list)
+    result = pyqtSignal(str, str, list, list)
 
     def __init__(self, db_manager, query_text):
         super().__init__()
@@ -19,9 +19,9 @@ class Worker(QObject):
             return
         self.running = True
         try:
-            query_sql, rows, columns, plots = run_pipeline(self.query_text, self.db_manager)
+            query_sql, rows, columns = run_pipeline(self.query_text, self.db_manager)
             if query_sql and rows and columns:
-                self.result.emit(self.query_text, query_sql, rows, columns, plots)
+                self.result.emit(self.query_text, query_sql, rows, columns)
         finally:
             self.running = False
             self.finished.emit()
@@ -172,7 +172,7 @@ class TextBox(QFrame):
 
         self.thread.start()
 
-    @pyqtSlot(str, str, list, list, list)
+    @pyqtSlot(str, str, list, list)
     def on_query_executed(self, query_text, query_sql, rows, columns):
         # Restore button
         self.spinner.stop()

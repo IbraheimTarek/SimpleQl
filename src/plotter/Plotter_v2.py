@@ -36,14 +36,14 @@ class DataVizTool(BaseTool):
         #### Exclude columns
         valid_cols = info_df.copy()
 
-        # Unique_valued cat features 
-        if len(valid_cols)==0:
-            return "No plots needed"
-        valid_cols = valid_cols[~((valid_cols['Data Type'] == 'object') & (valid_cols['Is_Unique_valued'] == True))]
-        # Unique_valued  numerical features
-        if len(valid_cols)==0:
-            return "No plots needed"
-        valid_cols = valid_cols[~((valid_cols['Data Type'] != 'object') & (valid_cols['Is_Unique_valued'] == True))]
+        # # Unique_valued cat features 
+        # if len(valid_cols)==0:
+        #     return "No plots needed"
+        # valid_cols = valid_cols[~((valid_cols['Data Type'] == 'object') & (valid_cols['Is_Unique_valued'] == True))]
+        # # Unique_valued  numerical features
+        # if len(valid_cols)==0:
+        #     return "No plots needed"
+        # valid_cols = valid_cols[~((valid_cols['Data Type'] != 'object') & (valid_cols['Is_Unique_valued'] == True))]
         # Id colums
         if len(valid_cols)==0:
             return "No plots needed"
@@ -62,13 +62,18 @@ class DataVizTool(BaseTool):
         num_cols = valid_cols[valid_cols["Data Type"].apply(lambda x: np.issubdtype(np.dtype(x), np.number))]["Column Name"].tolist()
         cat_cols = valid_cols[valid_cols["Data Type"].apply(lambda x: not np.issubdtype(np.dtype(x), np.number))]["Column Name"].tolist()
 
+        # Shorten categorical values in the dataframe
+        for col in cat_cols:
+            self._df[col] = self._df[col].apply(lambda x: self.shorten_label(x, max_len=10))
+
+
         generated_plots = []
 
-        # Single Numeric
-        for col in num_cols:
-            # unique = valid_cols[valid_cols["Column Name"] == col]["UniqueValues"].values[0]
-            path = self.vis_single_num(self._df, col)
-            generated_plots.append(path)
+        # # Single Numeric
+        # for col in num_cols:
+        #     # unique = valid_cols[valid_cols["Column Name"] == col]["UniqueValues"].values[0]
+        #     path = self.vis_single_num(self._df, col)
+        #     generated_plots.append(path)
 
         # Single Categorical
         for col in cat_cols:
@@ -104,13 +109,25 @@ class DataVizTool(BaseTool):
         pattern = r'(^id$|^id[\-_].*|.*[\-_]id$|.*[\-_]id[\-_].*)'
         return bool(re.match(pattern, colname))
 
-
+    def shorten_label(self, label, max_len=11):
+        if not isinstance(label, str):
+            return label  # Just return non-strings (e.g., NaNs) as-is
+        return label if len(label) <= max_len else label[:max_len].rstrip() + "..."
 # =======================
 # Visualization Functions
 # =======================
 
     def vis_single_cat(self, df, col):
-        value_counts = df[col].value_counts()
+
+        # Drop NA to avoid counting them as unique
+        non_null_values = df[col].dropna()
+        unique_ratio = non_null_values.nunique() / len(non_null_values)
+
+        # Return early if uniqueness is too high
+        if unique_ratio >= 0.95:
+            return None
+
+        value_counts = non_null_values.value_counts()
         self._ensure_plot_dir()
 
         if len(value_counts) <= 10:
@@ -122,12 +139,12 @@ class DataVizTool(BaseTool):
             plt.figure(figsize=(10, 5))
             sns.countplot(data=df, x=col, order=value_counts.index)
             plt.title(f'Bar Plot for {col}')
-            plt.xticks(rotation=45)
+            plt.xticks(rotation=45) 
 
-        path = os.path.join(self._plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-        return path
+            path = os.path.join(self._plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
+            plt.savefig(path, bbox_inches="tight")
+            plt.close()
+            return path
 
     def vis_two_cat(self, df, col1, col2):
         self._ensure_plot_dir()
@@ -174,59 +191,59 @@ class DataVizTool(BaseTool):
             plt.ylabel(col1)
             plt.tight_layout()
 
-        path = os.path.join(self._plots_dir, f"{col1}_{col2}_2cat_{uuid.uuid4().hex}.png")
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-        return path
-
-    def vis_single_num(self, df, col):
-        self._ensure_plot_dir()
-
-        data = df[col].dropna()
-        unique_vals = data.nunique()
-
-        if unique_vals <= 10:
-            value_counts = data.value_counts().sort_index()
-            plt.figure(figsize=(6, 6))
-            sns.barplot(x=value_counts.index, y=value_counts.values)
-            plt.title(f'Bar plot of {col}')
-            plt.xlabel(col)
-            plt.ylabel('Count')
-            path = os.path.join(self._plots_dir, f"{col}_num_bar_{uuid.uuid4().hex}.png")
+            path = os.path.join(self._plots_dir, f"{col1}_{col2}_2cat_{uuid.uuid4().hex}.png")
             plt.savefig(path, bbox_inches="tight")
             plt.close()
             return path
 
-        q75, q25 = np.percentile(data, [75, 25])
-        iqr = q75 - q25
-        n = len(data)
+# def vis_single_num(df, col):
+#     _ensure_plot_dir()
 
-        if iqr == 0:
-            bin_width = (data.max() - data.min()) / 20
-        else:
-            bin_width = 2 * iqr * (n ** (-1 / 3))
+#     data = df[col].dropna()
+#     unique_vals = data.nunique()
 
-        if bin_width == 0:
-            bins = 20
-        else:
-            bins = int((data.max() - data.min()) / bin_width)
-            bins = max(10, bins)
+#     if unique_vals <= 10:
+#         value_counts = data.value_counts().sort_index()
+#         plt.figure(figsize=(6, 6))
+#         sns.barplot(x=value_counts.index, y=value_counts.values)
+#         plt.title(f'Bar plot of {col}')
+#         plt.xlabel(col)
+#         plt.ylabel('Count')
+#         path = os.path.join(PLOT_DIR, f"{col}_num_bar_{uuid.uuid4().hex}.png")
+#         plt.savefig(path, bbox_inches="tight")
+#         plt.close()
+#         return path
 
-        plt.figure(figsize=(12, 5))
+#     q75, q25 = np.percentile(data, [75, 25])
+#     iqr = q75 - q25
+#     n = len(data)
 
-        plt.subplot(1, 2, 1)
-        sns.histplot(data, kde=True, bins=bins)
-        plt.title(f'Histogram of {col} (bins={bins})')
+#     if iqr == 0:
+#         bin_width = (data.max() - data.min()) / 20
+#     else:
+#         bin_width = 2 * iqr * (n ** (-1 / 3))
 
-        plt.subplot(1, 2, 2)
-        sns.boxplot(x=data)
-        plt.title(f'Boxplot of {col}')
+#     if bin_width == 0:
+#         bins = 20
+#     else:
+#         bins = int((data.max() - data.min()) / bin_width)
+#         bins = max(10, bins)
 
-        plt.tight_layout()
-        path = os.path.join(self._plots_dir, f"{col}_num_{uuid.uuid4().hex}.png")
-        plt.savefig(path, bbox_inches="tight")
-        plt.close()
-        return path
+#     plt.figure(figsize=(12, 5))
+
+#     plt.subplot(1, 2, 1)
+#     sns.histplot(data, kde=True, bins=bins)
+#     plt.title(f'Histogram of {col} (bins={bins})')
+
+#     plt.subplot(1, 2, 2)
+#     sns.boxplot(x=data)
+#     plt.title(f'Boxplot of {col}')
+
+#     plt.tight_layout()
+#     path = os.path.join(PLOT_DIR, f"{col}_num_{uuid.uuid4().hex}.png")
+#     plt.savefig(path, bbox_inches="tight")
+#     plt.close()
+#     return path
 
     def vis_two_num(self, df, col1, col2):
         self._ensure_plot_dir()
@@ -271,7 +288,7 @@ class DataVizTool(BaseTool):
             sub_df[cat_col] = sub_df[cat_col].where(sub_df[cat_col].isin(top_categories), other='Other')
 
         plt.figure(figsize=(10, 6))
-        sns.violinplot(x=cat_col, y=num_col, data=sub_df)
+        sns.violinplot(x=cat_col, y=num_col, data=sub_df,cut=0)
         plt.title(f'Violin Plot of {num_col} by {cat_col}')
         plt.xticks(rotation=45)
         plt.tight_layout()
@@ -283,23 +300,26 @@ class DataVizTool(BaseTool):
         return path
 
 # =======================
-# Testing 
+# Testing it
 # =======================
 
 if __name__ == "__main__":
     df_result = pd.DataFrame({
-    'gender': np.random.choice(['Male', 'Female'], size=20),
-    'age': np.random.randint(18, 65, size=20),
-    'department': np.random.choice(['HR', 'IT', 'Sales', 'Finance'], size=20),
-    'salary': np.random.randint(30000, 100000, size=20),
-    'status': np.random.choice(
-        ['Active', 'Inactive', 'On Leave', 'Fired', 'Retired', 'Suspended',
-         'Pending', 'Resigned', 'Training', 'Intern', 'Part-time', 'Contract'], size=20),
-    'rating': np.round(np.random.uniform(1.0, 5.0, size=20), 1),
-    'region': np.random.choice(['East', 'West', 'North', 'South', 'Central', 'Northeast', 'Southwest', 'Midwest'], size=20),
-    'team': np.random.choice([f'Team{i}' for i in range(1, 16)], size=20)
+    'id': ["ahmed","mohammed","fawzy"],
+    # 'gender': np.random.choice(['Male', 'Female'], size=20),
+    # 'age': np.random.randint(18, 65, size=20),
+    # 'department': np.random.choice(['HR', 'IT', 'Sales', 'Finance'], size=20),
+    # 'salary': np.random.randint(30000, 100000, size=20),
+    # 'status': np.random.choice(
+    #     ['Active', 'Inactive', 'On Leave', 'Fired', 'Retired', 'Suspended',
+    #      'Pending', 'Resigned', 'Training', 'Intern', 'Part-time', 'Contract'], size=20),
+    # 'rating': np.round(np.random.uniform(1.0, 5.0, size=20), 1),
+    # 'region': np.random.choice(['East', 'West', 'North', 'South', 'Central', 'Northeast', 'Southwest', 'Midwest'], size=20),
+    # 'team': np.random.choice([f'Team{i}' for i in range(1, 16)], size=20)
 })
 
     viz_tool = DataVizTool(df_result)
     result = viz_tool.run("Plot automatically")
     print(result)
+
+

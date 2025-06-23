@@ -31,7 +31,7 @@ class PlotWidget(QLabel):
         """Open full-size image in a popup window"""
         dialog = QDialog()
         dialog.setWindowTitle("Image Viewer")
-        dialog.setMinimumSize(600, 400)
+        dialog.setMinimumSize(800, 600)
 
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(10, 10, 10, 10)

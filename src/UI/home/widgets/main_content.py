@@ -1,13 +1,16 @@
 import json
 import os
+import csv
+
 from UI.home.widgets.textbox import TextBox
 from UI.home.widgets.plot_widget import PlotWidget
 
 from PyQt6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QTextEdit, QWidget, QScrollArea,
-    QDialog, QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication
+    QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame, QFileDialog, QWidget, QScrollArea,
+    QDialog, QTableWidget, QTableWidgetItem, QAbstractItemView, QApplication, QLineEdit, QMessageBox
 )                         
 from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtGui import QIcon
 
 
 class MainContent(QFrame):
@@ -30,10 +33,9 @@ class MainContent(QFrame):
             }
         """)
         
-        layout = QVBoxLayout()
-        layout.setContentsMargins(30, 30, 30, 30)
-        layout.setSpacing(20)
-        layout.addStretch()
+        self.main_layout = QVBoxLayout()
+        self.main_layout.setContentsMargins(30, 30, 30, 30)
+        self.main_layout.setSpacing(20)
         
         # Title area
         self.title_label = QLabel("كيف يمكنني مساعدتك؟")
@@ -45,7 +47,7 @@ class MainContent(QFrame):
                 padding-bottom: 8px;
             }
         """)
-        layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.title_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # Description
         self.description_label = QLabel("اكتب سؤال عن ما تريد معرفته عن بياناتك")
@@ -56,7 +58,7 @@ class MainContent(QFrame):
                 margin-bottom: 10px;
             }
         """)
-        layout.addWidget(self.description_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.main_layout.addWidget(self.description_label, alignment=Qt.AlignmentFlag.AlignCenter)
         
         # Text input area
         self.textbox_label = QLabel("السؤال")
@@ -69,10 +71,10 @@ class MainContent(QFrame):
                 margin-bottom: 8px;
             }
         """)
-        layout.addWidget(self.textbox_label)
+        self.main_layout.addWidget(self.textbox_label)
         # Integrated text input with execute button
         self.text_input = TextBox(self.db_manager)
-        layout.addWidget(self.text_input)
+        self.main_layout.addWidget(self.text_input)
         
         # Additional action buttons
         button_layout = QHBoxLayout()
@@ -124,7 +126,7 @@ class MainContent(QFrame):
         button_layout.addWidget(self.new_button)
         button_layout.addStretch()
         
-        layout.addLayout(button_layout)
+        self.main_layout.addLayout(button_layout)
         
         # Plot area placeholder
         self.plots_label = QLabel("الرسومات البيانية")
@@ -137,24 +139,25 @@ class MainContent(QFrame):
                 margin-bottom: 8px;
             }
         """)
-        layout.addWidget(self.plots_label)
+        self.main_layout.addWidget(self.plots_label)
         
         # plots
         self.plots_area = QScrollArea()
+        self.plots_area.setFixedHeight(200)
         self.plots_area.setWidgetResizable(True)
+        self.plots_area.setContentsMargins(0, 0, 0, 0)
         self.plots_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
         self.plots_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.plots_area.setFixedHeight(250)
         self.plots_container = QWidget()
         self.plots_layout = QHBoxLayout(self.plots_container)
         self.plots_area.setWidget(self.plots_container)
-        layout.addWidget(self.plots_area)
+        self.main_layout.addWidget(self.plots_area)
 
-        self.plots_empty = QTextEdit()
+        self.plots_empty = QLineEdit()
         self.plots_empty.setReadOnly(True)
         self.plots_empty.setPlaceholderText("لم يتم انتاج اي رسومات لهذا السؤال")
         self.plots_empty.setStyleSheet("""
-            QTextEdit {
+            QLineEdit {
                 border: 2px solid #E5E7EB;
                 border-radius: 8px;
                 padding: 12px;
@@ -165,10 +168,10 @@ class MainContent(QFrame):
                 color: #1F2937;
             }
         """)
-        self.plots_empty.setMinimumHeight(150)
-        layout.addWidget(self.plots_empty)
+        self.main_layout.addWidget(self.plots_empty)
 
         # Results area
+        self.results_layout = QHBoxLayout()
         self.results_label = QLabel("البيانات الناتجة")
         self.results_label.setStyleSheet("""
             QLabel {
@@ -179,24 +182,47 @@ class MainContent(QFrame):
                 margin-bottom: 8px;
             }
         """)
-        layout.addWidget(self.results_label)
+        self.results_layout.addWidget(self.results_label)
+        self.results_layout.addStretch()
+        self.export_button = QPushButton(icon=QIcon('src/UI/assets/download.png'))
+        self.export_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6B7280;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px;
+            }
+            QPushButton:hover {
+                background-color: #4B5563;
+            }
+            QPushButton:pressed {
+                background-color: #374151;
+            }
+        """)
+        self.export_button.clicked.connect(self.export_to_csv)
+        self.results_layout.addWidget(self.export_button)
+        self.main_layout.addLayout(self.results_layout)
+
         self.results_area = QTableWidget()
         self.results_area.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        layout.addWidget(self.results_area)
-        layout.addStretch()
+        self.main_layout.addWidget(self.results_area)
+        self.main_layout.addStretch()
         
-        self.setLayout(layout)
+        self.setLayout(self.main_layout)
     
     def update_ui(self, initial):
         self.initial = initial
 
         if self.initial:
+            self.main_layout.insertStretch(0)
             self.plots_area.hide()
             self.plots_label.hide()
             self.plots_empty.hide()
 
             self.results_area.hide()
             self.results_label.hide()
+            self.export_button.hide()
 
             self.textbox_label.hide()
 
@@ -212,13 +238,12 @@ class MainContent(QFrame):
             self.results_area.clear()
             self.text_input.text_edit.clear()
         else:
-            self.plots_area.show()
+            self.main_layout.removeItem(self.main_layout.itemAt(0))
             self.plots_label.show()
-            self.plots_empty.show()
-
 
             self.results_area.show()
             self.results_label.show()
+            self.export_button.show()
 
             self.textbox_label.show()
 
@@ -322,13 +347,11 @@ class MainContent(QFrame):
     
     def load_result_from_file(self, folder_path):
         """Load and display result from file"""
-        if not folder_path:  # Empty path means clear all results and go to initial state
+        if not folder_path:  # Empty path means go to initial state
             self.initial = True
             self.update_ui(self.initial)
             return
-            
-        self.initial = False
-        self.update_ui(self.initial)
+
         has_plots = False
         for f in os.listdir(folder_path):
             path = os.path.join(folder_path, f)
@@ -340,33 +363,44 @@ class MainContent(QFrame):
             else:
                 # Load plots
                 print(f"Directory : {path}")
+                while self.plots_layout.count():
+                    item = self.plots_layout.takeAt(0)
+                    widget = item.widget()
+                    if widget is not None:
+                        widget.deleteLater()
                 self.plots_layout.addStretch()
                 for plot in os.listdir(path):
                     plot_path = os.path.join(path, plot)
                     print(f"Plot: {plot_path}")
-                    plot_widget = PlotWidget(plot_path, QSize(200, 200))
+                    plot_widget = PlotWidget(plot_path, QSize(150, 150))
                     plot_widget.setStyleSheet("""
                         margin: 0 10px;
                     """)
                     self.plots_layout.addWidget(plot_widget)
                     has_plots = True
                 self.plots_layout.addStretch()
+                
+                self.plots_area.setWidget(self.plots_container)
 
         if has_plots:
-            self.plots_area.show()
             self.plots_empty.hide()
+            self.plots_area.show()
         else:
             self.plots_area.hide()
             self.plots_empty.show()
+
+        if self.initial == True:
+            self.initial = False
+            self.update_ui(self.initial)
         
         # Display the loaded result
-        columns = result['columns']
-        rows = result['rows']
-        self.results_area.setColumnCount(len(columns))
-        self.results_area.setHorizontalHeaderLabels(columns)
-        row_count = min(len(rows), 100)
+        self.columns = result['columns']
+        self.rows = result['rows']
+        self.results_area.setColumnCount(len(self.columns))
+        self.results_area.setHorizontalHeaderLabels(self.columns)
+        row_count = min(len(self.rows), 100)
         self.results_area.setRowCount(row_count)
-        for i, row in enumerate(rows[:row_count]):
+        for i, row in enumerate(self.rows[:row_count]):
             for j, value in enumerate(row):
                 self.results_area.setItem(i, j, QTableWidgetItem("NULL" if value is None else str(value)))
 
@@ -379,3 +413,22 @@ class MainContent(QFrame):
     def on_new_question_pressed(self):
         self.update_ui(initial=True)
         self.new_question.emit()
+
+    def export_to_csv(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save CSV",
+            "results.csv",
+            "CSV files (*.csv);;All files (*)"
+        )
+
+        if path:
+            try:
+                with open(path, 'w', newline='', encoding='utf-8') as csv_file:
+                    writer = csv.writer(csv_file)
+                    writer.writerow(self.columns)  # Write header
+                    writer.writerows(self.rows)    # Write all data rows
+
+                QMessageBox.information(self, "Export Successful", f"Results saved to:\n{path}")
+            except Exception as e:
+                QMessageBox.critical(self, "Export Failed", f"An error occurred:\n{e}")

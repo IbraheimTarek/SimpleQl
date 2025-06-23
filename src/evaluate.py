@@ -64,7 +64,7 @@ def evaluate(max_samples=MAX_SAMPLES, csv_out="mismatches.csv"):
 
         db_path = DB_ROOT / db_id / f"{db_id}.sqlite"
         if not db_path.exists():
-            print(f"[{idx:03}] ❌  DB file not found for {db_id}; skipping.")
+            print(f"[{idx:03}] X DB file not found for {db_id}; skipping.")
             bad += 1
             continue
 
@@ -72,9 +72,9 @@ def evaluate(max_samples=MAX_SAMPLES, csv_out="mismatches.csv"):
 
         try:
             # ---- our pipeline ----------------------------------
-            pred_sql, pred_rows, pred_cols = run_pipeline(question, dbm)
+            pred_sql, pred_rows, pred_cols = run_pipeline(question, dbm, similarity_threshold = 0)
         except Exception as e:   # hard failure inside pipeline
-            print(f"[{idx:03}] ❌  Pipeline crashed: {e}")
+            print(f"[{idx:03}] X Pipeline crashed: {e}")
             bad += 1
             mismatch_rows.append(
                 (db_id, question, "pipeline-crash", str(e))
@@ -83,7 +83,7 @@ def evaluate(max_samples=MAX_SAMPLES, csv_out="mismatches.csv"):
 
         # pipeline returned None -> skip
         if pred_rows is None:
-            print(f"[{idx:03}] ❌  Pipeline produced no answer.")
+            print(f"[{idx:03}] X Pipeline produced no answer.")
             bad += 1
             mismatch_rows.append(
                 (db_id, question, "pipeline-empty", "")
@@ -93,15 +93,15 @@ def evaluate(max_samples=MAX_SAMPLES, csv_out="mismatches.csv"):
         # ---- ground-truth execution --------------------------
         gt_rows, gt_cols, err = execute_query_rows_columns(str(db_path), gt_sql)
         if err:
-            print(f"[{idx:03}] ⚠️  GT SQL failed ({err}); skipping.")
+            print(f"[{idx:03}] ! GT SQL failed ({err}); skipping.")
             continue  # not counted
 
         # ---- compare ----------------------------------------
-        print(f"the rows of each output: pipeline {rows_to_multiset(pred_rows)}, true {rows_to_multiset(gt_rows)}")
+        print(f"{db_id} the rows of each output: pipeline {rows_to_multiset(pred_rows)}, true {rows_to_multiset(gt_rows)}")
 
         correct = rows_to_multiset(pred_rows) == rows_to_multiset(gt_rows)
 
-        tag = "✓" if correct else "X"
+        tag = "/" if correct else "X"
         print(f"[{idx:03}] {tag}  {question[:60]}")
 
         if correct:

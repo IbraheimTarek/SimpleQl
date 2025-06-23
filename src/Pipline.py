@@ -7,7 +7,7 @@ from models import get_spacy_model, get_embedding_model
 from database_manager import DBManager
 
 
-def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0.4):
+def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0):
     spacy_model = get_spacy_model()
     bert_model = get_embedding_model()
     schema = db_manager.schema
@@ -21,29 +21,41 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     print(context)
 
     res = run_candidate_generator(question, db_manager.db_path, selected_schema, 3)
-    print("\n final candidates:")
+    print("\nFinal candidates:")
     print(res)
-    if res:
-        for candidate_query, rows, error in res:
-            candidates.append(candidate_query)
 
-        print("\nCandidates:", candidates)
-        tester = UnitTester(k_unit_tests=4)
-        best_query = tester.choose_best((question), candidates)
-        print("\nBest query after validation:", best_query)
-        rows, columns, _ = execute_query_rows_columns(db_manager.db_path, best_query)
+    # keep only candidates that returned non-empty results & no error
+    candidates = [
+        query for query, rows_, err in res
+        if err is None and rows_ and len(rows_) > 0
+    ]
 
-        df_result = pd.DataFrame(rows, columns=columns)
-        print(df_result.head())
+    print("\nAccepted (non-empty) candidates:", candidates)
 
-        return best_query, rows, columns
+    if not candidates:                       # nothing usable
+        return None                          # or raise/custom-handle
+
+    # choose the best query
+    if len(candidates) == 1:
+        best_query = candidates[0]
     else:
-        # maybe return a type of error string
-        return None
+        tester = UnitTester(k_unit_tests=4)
+        best_query = tester.choose_best(question, candidates)
+
+    print("\nBest query after validation:", best_query)
+
+    # execute the winner to get rows & columns
+    rows, columns, _ = execute_query_rows_columns(db_manager.db_path, best_query)
+
+    df_result = pd.DataFrame(rows, columns=columns)
+    print(df_result.head())
+
+    return best_query, rows, columns
+
     
 if __name__ == "__main__":
 
-    question = "What is the average rating score of the movie \"When Will I Be Loved\" and who was its director?"
+    question = "What is the full address of the restaurant named 'Sanuki Restaurant'?"
     db_path = DB_PATH
     db_manager = DBManager(db_path)
     run_pipeline(question, db_manager)

@@ -5,6 +5,18 @@ Before generating the SQL query, carefully analyze the question to determine whe
 - If the question refers to multiple or all entities, do not include a limiting clause unless explicitly requested.
 Do not include any explanation or text besides the SQL code.
 
+You will be given the schema in the following format:
+{{
+  "table1": {{
+     "column1": "description1",
+     "column2": "description2"
+  }},
+  "table2": {{
+     "column1": "",
+     "column2": "description"
+  }}
+}}
+
 Question: {question}
 Schema: {schema}
 Context: {context}
@@ -21,6 +33,19 @@ Faulty Query:
 Before revising, carefully analyze the question to determine whether it refers to a single entity or multiple entities.
 - If the question indicates a single entity (using terms like "the", "one", "first", "single", etc.), ensure the revised query is limited to one record (e.g., by including 'LIMIT 1').
 - If the question refers to multiple or all entities, do not include a limiting clause unless explicitly requested.
+Do not include any explanation or text besides the SQL code.
+
+You will be given the schema in the following format:
+{{
+  "table1": {{
+     "column1": "description1",
+     "column2": "description2"
+  }},
+  "table2": {{
+     "column1": "",
+     "column2": "description"
+  }}
+}}
 
 Given the Question: {question}
 Schema: {schema}
@@ -33,7 +58,7 @@ Return only the revised SQL query.
 VALIDATION_PROMPT = (
                 "You are an expert SQL test engineer.  Devise "
                 "**{k} independent unit tests** that will run on SQLite "
-                "and separate correct from incorrect candidate queries. Each unit test should be designed in a way that it can distinguishes at lease two candidate responses from each other.\n\n"
+                "and separate correct from incorrect candidate queries. Each unit test should be designed in a way that it can distinguishes at lease two candidate responses from each other and choose the best query that answers the question.\n\n"
                 "Each unit-test **MUST** be a JSON object with the following "
                 "keys:\n"
                 "  . schema_sql   - DDL to create the schema.\n"

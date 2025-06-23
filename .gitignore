@@ -1,3 +1,8 @@
 datasets
 .env
 plots
+*.pyc
+__pycache__
+history
+models
+

@@ -6,7 +6,8 @@ Name the movie with the most ratings.
 List all movie title rated in April 2020 from user who was a trialist.
 List all movies with the best rating score. State the movie title and number of Mubi user who loves the movie.
 What is the average rating for movie titled 'When Will I Be Loved'?
-
+For movie titled 'Welcome to the Dollhouse', how many percentage of the ratings were rated with highest score.
+What is the list ID that was first created by user 85981819?
 
 (question) ──► CandidateGenerator ──► rows
                                ▼

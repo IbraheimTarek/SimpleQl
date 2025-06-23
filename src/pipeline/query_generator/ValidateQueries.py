@@ -8,7 +8,7 @@ from collections import Counter
 from langchain_groq import ChatGroq
 from langchain.schema import SystemMessage, HumanMessage, AIMessage
 from Params import *
-
+from pipeline.query_generator.Promots import *
 JSONTest = Dict[str, Any]
 
 try:
@@ -123,22 +123,7 @@ class UnitTester:
         exactly `self.k` objects in the schema.
         """
         system = SystemMessage(
-            content=(
-                "You are an expert SQL test engineer.  Devise "
-                f"**{self.k} independent unit tests** that will run on SQLite "
-                "and separate correct from incorrect candidate queries. Each unit test should be designed in a way that it can distinguishes at lease two candidate responses from each other.\n\n"
-                "Each unit-test **MUST** be a JSON object with the following "
-                "keys:\n"
-                "  . schema_sql   - DDL to create the schema.\n"
-                "  . data_sql     - INSERTs that populate just enough rows to "
-                "                   make wrong queries fail.\n"
-                "  . expected     - The exact result set (array-of-rows, where "
-                "                   each row is an array) the *correct* query "
-                "                   should return.\n"
-                "  . order_matters - Boolean; default false.\n\n"
-                "Return the unit-tests as *one* top-level JSON array, nothing "
-                "else.  Keep schemas minimal and data small."
-            )
+            content=VALIDATION_PROMPT.format(k=self.k)  # VALIDATION_PROMPT uses {k} for formatting
         )
 
         cand_block = "\n\n".join(f"-- Candidate {i+1}\n{sql}" for i, sql in enumerate(candidates))
@@ -166,7 +151,7 @@ class UnitTester:
         ) -> List[bool]:
             order = bool(test.get("order_matters", False))
 
-            # ---- normalise expected results --------------------------
+            # normalise the expected results 
             expected_rows = test["expected"]
             if expected_rows and not isinstance(expected_rows[0], list):
                 expected_rows = [[x] for x in expected_rows]     # 1-col shortcut
@@ -182,7 +167,6 @@ class UnitTester:
 
                 def equal(a: list[tuple]) -> bool:   # order-insensitive
                     return Counter(a) == expected_multiset
-            # ---------------------------------------------------------------
 
             passes: list[bool] = []
             for sql in candidates:
@@ -197,15 +181,18 @@ class UnitTester:
                 except Exception:
                     passes.append(False)
 
-            print(f"Unit test schema (first 50 chars): {test['schema_sql']}...")
-            print(f"Expected result: {test['expected']}")
-            print(f"Order matters: {test.get('order_matters', False)}")
-            print(f"Candidates: {len(candidates)} | Passed: {sum(passes)}")
-            for i, (sql, passed) in enumerate(zip(candidates, passes), 1):
-                print(f"  Candidate {i}: {'PASSED' if passed else 'FAILED'}")
-                print(sql.strip())
-                print("-" * 40)
+            #self._print_unit_test_results(test, candidates, passes)
             return passes
+
+    def _print_unit_test_results(self, test: JSONTest, candidates: Sequence[str], passes: List[bool]) -> None:
+        print(f"Unit test schema (first 50 chars): {test['schema_sql'][:50]}...")
+        print(f"Expected result: {test['expected']}")
+        print(f"Order matters: {test.get('order_matters', False)}")
+        print(f"Candidates: {len(candidates)} | Passed: {sum(passes)}")
+        for i, (sql, passed) in enumerate(zip(candidates, passes), 1):
+            print(f"  Candidate {i}: {'PASSED' if passed else 'FAILED'}")
+            print(sql.strip())
+            print("-" * 40)
 
 
 

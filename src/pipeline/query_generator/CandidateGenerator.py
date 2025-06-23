@@ -8,6 +8,7 @@ from typing import Dict
 import time
 from Params import *
 from database_manager import DBManager
+from pipeline.query_generator.Promots import *
 from pipeline.question_processing.schema_selector import *
 
 load_dotenv()
@@ -30,49 +31,20 @@ class CandidateGenerator:
       -> revise_query: Revises the SQL query if execution produces an error or empty result or timeout. until it finds a working query or reaches the maximum number of revisions.
     """
     
-    def __init__(self, llm, max_revisions=3):
+    def __init__(self, llm, max_revisions=MAX_REVISIONS):
         self.llm = llm
         self.max_revisions = max_revisions
 
         # Prompt template for generating the candidate SQL query.
         self.gen_prompt = PromptTemplate(
             input_variables=["question", "schema", "context"],
-            template="""
-You are an expert SQL developer. Given the following inputs, generate a SQL query that answers the question.
-Before generating the SQL query, carefully analyze the question to determine whether it refers to a single entity or multiple entities.
-- If the question indicates a single entity (using terms like "the", "one", "first", "single", etc.), ensure the query is limited to return one record (for example, by including 'LIMIT 1').
-- If the question refers to multiple or all entities, do not include a limiting clause unless explicitly requested.
-Do not include any explanation or text besides the SQL code.
-
-Question: {question}
-Schema: {schema}
-Context: {context}
-
-Please provide only the SQL query.
-"""
+            template=FIRST_PROMPT
         )
 
         # Prompt template for revising a faulty query.
         self.revise_prompt = PromptTemplate(
             input_variables=["question", "schema", "context", "faulty_query", "error_description"],
-            template="""
-The previously generated SQL query produced the following error:
-Error: {error_description}
-
-Faulty Query:
-{faulty_query}
-
-Before revising, carefully analyze the question to determine whether it refers to a single entity or multiple entities.
-- If the question indicates a single entity (using terms like "the", "one", "first", "single", etc.), ensure the revised query is limited to one record (e.g., by including 'LIMIT 1').
-- If the question refers to multiple or all entities, do not include a limiting clause unless explicitly requested.
-
-Given the Question: {question}
-Schema: {schema}
-Context: {context}
-
-Please revise the SQL query to fix the error and correctly answer the question.
-Return only the revised SQL query.
-"""
+            template= REVISION_PROMPT
         )
 
         # LLMChains for generation and revision
@@ -324,7 +296,7 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
 if __name__ == "__main__":
 
     question = "What is the average rating score of the movie \"When Will I Be Loved\" and who was its director?"
-    db_path = "D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite"
+    db_path = DB_PATH
     db_manager = DBManager(db_path)
     schema = db_manager.schema
 

@@ -43,8 +43,8 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     
 if __name__ == "__main__":
 
-    question = "insert a new movie 'Inception' with rating 8.8 and release year 2010 into the database"
-    db_path = "datasets/train/train_databases/movie_platform/movie_platform.sqlite"
+    question = "What is the average rating score of the movie \"When Will I Be Loved\" and who was its director?"
+    db_path = DB_PATH
     db_manager = DBManager(db_path)
     run_pipeline(question, db_manager)
     

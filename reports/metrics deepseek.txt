@@ -1,0 +1,11 @@
+Candidate Generator: deepseek-r1-distill-llama-70b
+Validator          : meta-llama/llama-4-maverick-17b-128e-instruct
+Run at             : 2025-06-24 19:26:07
+Samples            : 50
+Correct            : 25
+Wrong              : 25
+Accuracy           : 0.5000
+Macro_F1           : 0.6744
+Micro_F1           : 0.9943
+Avg_Latency_sec    : 28.407
+Avg_SQL_Tokens     : 25.5

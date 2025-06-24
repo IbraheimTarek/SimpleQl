@@ -4,7 +4,7 @@ import json
 import pandas as pd
 import shutil
 
-from plotter.Plotter_v2 import DataVizTool
+from plotter.Plotter import DataVizTool
 from UI.home.widgets.result_button import ResultButton
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame, QScrollArea, QMessageBox, QFileDialog                          

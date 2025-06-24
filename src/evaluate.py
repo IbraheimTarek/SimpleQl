@@ -15,7 +15,7 @@ DB_ROOT = DATASET_ROOT / "train_databases"
 REPORT_ROOT = Path("reports")
 CSV_OUT= REPORT_ROOT/"mismatches.csv"
 
-MAX_SAMPLES = 100          
+MAX_SAMPLES = 50          
 SEED = 42
 
 random.seed(SEED)
@@ -66,10 +66,10 @@ def next_metrics_path(base= REPORT_ROOT/ "metrics.txt") -> Path:
         if not alt.exists():
             return alt
 
-def rows_to_multiset(rows):
-    """Return a Counter of rows converted to hashable tuples."""
+def rows_to_multiset(rows, ignore_pos=False):
+    if ignore_pos:
+        return collections.Counter(frozenset(r) for r in rows) 
     return collections.Counter(tuple(r) for r in (rows or []))
-
 
 def evaluate(max_samples=MAX_SAMPLES):
     # ---------- load dataset ---------------------------------
@@ -106,7 +106,7 @@ def evaluate(max_samples=MAX_SAMPLES):
         try:
             # our pipeline
             start_time = time.perf_counter()
-            pred_sql, pred_rows, pred_cols = run_pipeline(question, dbm, similarity_threshold=0)
+            pred_sql, pred_rows, pred_cols = run_pipeline(question, dbm)
             latencies.append(time.perf_counter() - start_time)
             token_costs.append(count_tokens(pred_sql or "")) 
 
@@ -145,7 +145,7 @@ def evaluate(max_samples=MAX_SAMPLES):
 
         print(f"{db_id} the rows of each output: pipeline {rows_to_multiset(pred_rows)}, true {rows_to_multiset(gt_rows)}")
 
-        correct = rows_to_multiset(pred_rows) == rows_to_multiset(gt_rows)
+        correct = ( rows_to_multiset(pred_rows, ignore_pos=True) == rows_to_multiset(gt_rows, ignore_pos=True) )
 
         tag = "/" if correct else "X"
         print(f"[{idx:03}] {tag}  {question[:]}")

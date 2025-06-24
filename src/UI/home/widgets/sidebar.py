@@ -227,7 +227,6 @@ class Sidebar(QFrame):
         df = pd.DataFrame(rows, columns=columns)
         plotter = DataVizTool(df, f"{self.results_directory}/{self.query_counter}/plots")
         try:
-            raise
             plotter._run("Plot automatically")
         except:
             QMessageBox.critical(
@@ -236,7 +235,6 @@ class Sidebar(QFrame):
                 "تعذر انتاج الرسومات البيانية لهذا السؤال. الرجاء حاول مرة اخري", 
                 QMessageBox.StandardButton.Ok
             )
-            return
 
         self.query_counter += 1
         timestamp = datetime.now().strftime("%H:%M:%S")

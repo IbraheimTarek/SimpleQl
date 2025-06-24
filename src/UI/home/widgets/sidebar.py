@@ -2,6 +2,8 @@ import os
 from datetime import datetime
 import json
 import pandas as pd
+import shutil
+
 from plotter.Plotter_v2 import DataVizTool
 from UI.home.widgets.result_button import ResultButton
 
@@ -18,6 +20,7 @@ class Sidebar(QFrame):
     def __init__(self, db_manager, query_counter=0, query_buttons : list = [], parent=None):
         super().__init__(parent)
         self.query_buttons = query_buttons
+        self.curr_button = None
         self.query_counter = query_counter
         self.db_manager = db_manager
         self.db_name = db_manager.db_name
@@ -228,7 +231,8 @@ class Sidebar(QFrame):
             query_text,
             self.query_counter
         )
-        button.clicked.connect(lambda: self.on_result_clicked(button))
+        button.clicked(lambda: self.on_result_clicked(button))
+        button.on_icon_clicked(lambda: self.clear_result(button.query_id))
         
         # Add button to layout (insert at top, after removing stretch)
         self.buttons_layout.removeItem(self.buttons_layout.itemAt(self.buttons_layout.count() - 1))  # Remove stretch
@@ -246,28 +250,35 @@ class Sidebar(QFrame):
             os.makedirs(self.results_directory)
             self.query_counter = 0
 
-        for dir in os.listdir(self.results_directory):
-            self.query_counter += 1
-            file_path = os.path.join(self.results_directory, dir + f"/{self.query_counter}.json")
-            print(file_path)
-            with open(file_path, 'r', encoding='utf-8') as f:
-                result = json.load(f)
-            button = ResultButton(
-                result['query_text'],
-                self.query_counter
-            )
-            button.clicked.connect(lambda _, b=button: self.on_result_clicked(b))
-            
-            # Add button to layout (insert at top, after removing stretch)
-            self.buttons_layout.removeItem(self.buttons_layout.itemAt(self.buttons_layout.count() - 1))  # Remove stretch
-            self.buttons_layout.addWidget(button)  
-            self.buttons_layout.addStretch()  # Add stretch back
-            
-            # Add to tracking list
-            self.query_buttons.append(button)
+        results = os.listdir(self.results_directory)
+        if len(results) == 0:
+            self.query_counter = 0
+        else:
+            dirs = sorted(results, key=lambda x: int(x))
+            self.query_counter = int(dirs[len(dirs) - 1])
 
-            if self.query_counter != 0:
-                self.clear_button.setEnabled(True)
+            for dir in reversed(dirs):
+                file_path = os.path.join(self.results_directory, dir + f"/{int(dir)}.json")
+                print(file_path)
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    result = json.load(f)
+                button = ResultButton(
+                    result['query_text'],
+                    int(dir)
+                )
+                button.clicked(lambda _, b=button: self.on_result_clicked(b))
+                button.on_icon_clicked(lambda _, b=button: self.clear_result(b.query_id))
+                
+                # Add button to layout (insert at top, after removing stretch)
+                self.buttons_layout.removeItem(self.buttons_layout.itemAt(self.buttons_layout.count() - 1))  # Remove stretch
+                self.buttons_layout.addWidget(button)  
+                self.buttons_layout.addStretch()  # Add stretch back
+                
+                # Add to tracking list
+                self.query_buttons.append(button)
+
+        if self.query_counter != 0:
+            self.clear_button.setEnabled(True)
                  
     def on_result_clicked(self, clicked_button):
         """Handle result button click"""
@@ -276,6 +287,7 @@ class Sidebar(QFrame):
     
     def select_button(self, selected_button):
         """Select a button and deselect others"""
+        self.curr_button = selected_button
         for button in self.query_buttons:
             button.setChecked(button == selected_button)
     
@@ -293,11 +305,12 @@ class Sidebar(QFrame):
             # Remove all buttons
             for button in self.query_buttons:
                 button.deleteLater()
+                button.setParent(None)
                 # Try to delete the associated file
                 dir = f"history/databases/{self.db_name}/query_results"
                 for filename in os.listdir(dir):
                     file_path = os.path.join(dir, filename)
-                    os.remove(file_path)
+                    shutil.rmtree(file_path)
             
             self.query_buttons.clear()
             self.query_counter = 0
@@ -306,21 +319,55 @@ class Sidebar(QFrame):
             self.empty_label.show()
             self.clear_button.setEnabled(False)
             
-            # Reset title
-            self.title_label.setText("Query Results")
-            
             # Clear main content
             self.result_clicked.emit("")
+
+    def clear_result(self, query_id):
+        """Clear current query results"""
+        reply = QMessageBox.question(
+            self, 
+            'Clear Results', 
+            'Are you sure you want to clear query results?\nThis will delete saved result files.',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            # Remove button
+            for i, b in enumerate(self.query_buttons):
+                if b.query_id == query_id:
+                    button = self.query_buttons.pop(i)
+                    button.deleteLater()
+                    button.setParent(None)
+                    self.buttons_layout.removeWidget(button)
+                    break
+            # Try to delete the associated file
+            dir = f"history/databases/{self.db_name}/query_results/{query_id}"
+            shutil.rmtree(dir)
+            
+            if query_id == self.query_counter:
+                self.query_counter -= 1
+
+            # Show empty label if all deleted
+            if self.query_counter == 0:
+                self.empty_label.show()
+                self.clear_button.setEnabled(False)
+            
+            # Clear main content if its the current button
+            if self.curr_button.query_id == query_id:
+                self.result_clicked.emit("")
+                self.clear_checked()
 
     def changeDatabase(self):
         file_path, _ = QFileDialog.getOpenFileName(
             parent=self,
-            caption="Select Database File",
+            caption="(.sqlite) اختر قاعدة بياناتك",
             filter="SQLite Database Files (*.sqlite);;All Files (*)"
         )
         
         self.db_changed.emit(file_path)
 
     def clear_checked(self):
+        self.curr_button = None
         for button in self.query_buttons:
             button.setChecked(False)        

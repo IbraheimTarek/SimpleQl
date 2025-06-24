@@ -264,7 +264,7 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
         # 4
         while (error is not None or (results is not None and len(results) == 0)) and revision_count < candidate_generator.max_revisions:
             issue_description = error if error is not None else "Empty result returned"
-            print("\nIssue encountered: ", issue_description)
+            # print("\nIssue encountered: ", issue_description)
             
             candidate_query = candidate_generator.revise_query(
                 question=question,
@@ -273,16 +273,16 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
                 faulty_query=candidate_query,
                 error_description=issue_description
             )
-            print(f"\nRevised Candidate Query (Attempt {revision_count + 1}):")
-            print(candidate_query)
+            # print(f"\nRevised Candidate Query (Attempt {revision_count + 1}):")
+            # print(candidate_query)
             
             results, error = execute_query(db_path, candidate_query)
             revision_count += 1
         
-        print("\nFinal Query for candidate", i+1, ":")
-        print(candidate_query)
-        print("\nQuery Results:")
-        print(results)
+        # print("\nFinal Query for candidate", i+1, ":")
+        # print(candidate_query)
+        # print("\nQuery Results:")
+        # print(results)
         # done
         all_candidates.append((candidate_query, results, error))
 

@@ -1,0 +1,11 @@
+Candidate Generator: meta-llama/llama-4-maverick-17b-128e-instruct
+Validator          : meta-llama/llama-4-maverick-17b-128e-instruct
+Run at             : 2025-06-24 18:28:50
+Samples            : 50
+Correct            : 24
+Wrong              : 26
+Accuracy           : 0.4800
+Macro_F1           : 0.6931
+Micro_F1           : 0.9892
+Avg_Latency_sec    : 23.290
+Avg_SQL_Tokens     : 22.6

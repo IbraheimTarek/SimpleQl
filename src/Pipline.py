@@ -15,14 +15,14 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     selected_schema = select_schema(question, schema, embeddings, spacy_model, bert_model, fuzz_threshold=fuzz_threshold, similarity_threshold=similarity_threshold)
     candidates = []
     _, context = get_schema_and_context(db_manager.db_path)
-    print("Extracted Schema:")
-    print(selected_schema)
-    print("\nExtracted Context:")
-    print(context)
+    # print("Extracted Schema:")
+    # print(selected_schema)
+    # print("\nExtracted Context:")
+    # print(context)
 
     res = run_candidate_generator(question, db_manager.db_path, selected_schema, 3)
-    print("\nFinal candidates:")
-    print(res)
+    # print("\nFinal candidates:")
+    # print(res)
 
     # keep only candidates that returned non-empty results & no error
     candidates = [
@@ -47,25 +47,16 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     # execute the winner to get rows & columns
     rows, columns, _ = execute_query_rows_columns(db_manager.db_path, best_query)
 
-    df_result = pd.DataFrame(rows, columns=columns)
-    print(df_result.head())
-
     return best_query, rows, columns
 
     
 if __name__ == "__main__":
 
-    question = "What is the full address of the restaurant named 'Sanuki Restaurant'?"
+    question = "Units sold per supplier"
     db_path = DB_PATH
     db_manager = DBManager(db_path)
-    run_pipeline(question, db_manager)
-    
-    # viz_tool = DataVizTool(df_result)
-
-    # img_path = viz_tool.run("Plot the distribution of ratings")
-
-    # print("Saved chart to ", img_path)
-
-
-    # if inside Streamlit:
-    #st.image(img_path, caption="Auto-generated plot")
+    _, rows, columns = run_pipeline(question, db_manager)
+    df_result = pd.DataFrame(rows, columns=columns)
+    viz_tool = DataVizTool(df_result)
+    result = viz_tool.run("Plot automatically")
+    print(result)

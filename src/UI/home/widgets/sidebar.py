@@ -6,9 +6,11 @@ import shutil
 
 from plotter.Plotter import DataVizTool
 from UI.home.widgets.result_button import ResultButton
+from UI.home.widgets.schema_viewer import SchemaViewer
 
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QFrame, QScrollArea, QMessageBox, QFileDialog                          
+from PyQt6.QtWidgets import QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame, QScrollArea, QMessageBox, QFileDialog                          
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QIcon
 
 
 class Sidebar(QFrame):
@@ -154,6 +156,8 @@ class Sidebar(QFrame):
 
         main_layout.addWidget(self.clear_button)
 
+        self.db_buttons_layout = QHBoxLayout()
+
         # Change DB button
         self.change_db_button = QPushButton("اختيار بيانات جديدة")
         self.change_db_button.setStyleSheet("""
@@ -179,7 +183,35 @@ class Sidebar(QFrame):
             }
         """)
         self.change_db_button.clicked.connect(self.changeDatabase)
-        main_layout.addWidget(self.change_db_button)
+
+        self.db_buttons_layout.addWidget(self.change_db_button, 1)
+
+        # Schema viewer button
+        self.schema_button = QPushButton(icon=QIcon("src/UI/assets/gear.png"))
+        self.schema_button.setStyleSheet("""
+            QPushButton {
+                background-color: #14B8A6;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 8;
+                margin: 10px 0 0 10px;
+            }
+            QPushButton:hover {
+                background-color: #0F766E;
+            }
+            QPushButton:pressed {
+                background-color: #0D5B56;
+            }
+            QPushButton:disabled {
+                background-color: #CBD5E1;
+                color: #D1D5DB;
+            }
+        """)
+        self.schema_button.clicked.connect(self.open_schema_viewer)
+
+        self.db_buttons_layout.addWidget(self.schema_button)
+
+        main_layout.addLayout(self.db_buttons_layout)
 
         self.load_query_results()
 
@@ -190,6 +222,20 @@ class Sidebar(QFrame):
     
     def add_query_result(self, query_text, query_sql, rows, columns):
         """Add a new query result to the sidebar"""
+
+        # Make plots
+        df = pd.DataFrame(rows, columns=columns)
+        plotter = DataVizTool(df, f"{self.results_directory}/{self.query_counter}/plots")
+        try:
+            plotter._run("Plot automatically")
+        except:
+            QMessageBox.critical(
+                self, 
+                "خطأ", 
+                "تعذر انتاج الرسومات البيانية لهذا السؤال. الرجاء حاول مرة اخري", 
+                QMessageBox.StandardButton.Ok
+            )
+
         self.query_counter += 1
         timestamp = datetime.now().strftime("%H:%M:%S")
         
@@ -215,11 +261,6 @@ class Sidebar(QFrame):
         except Exception as e:
             print(f"Error saving result: {e}")
             return
-        
-        # Make plots
-        df = pd.DataFrame(rows, columns=columns)
-        plotter = DataVizTool(df, f"{self.results_directory}/{self.query_counter}/plots")
-        plotter._run("Plot automatically")
         
         # Remove empty label if this is the first query
         if len(self.query_buttons) == 0:
@@ -370,4 +411,9 @@ class Sidebar(QFrame):
     def clear_checked(self):
         self.curr_button = None
         for button in self.query_buttons:
-            button.setChecked(False)        
+            button.setChecked(False)     
+
+    def open_schema_viewer(self):
+        dialog = SchemaViewer(self.db_manager)
+        dialog.exec()
+        print(self.db_manager.schema)   

@@ -9,7 +9,6 @@ class ResultButton(QWidget):
         self.query_id = query_id
         self.query_text = query_text
 
-        # Use layout to contain the main button
         self.setFixedHeight(40)
         self.setStyleSheet("""
             QWidget {
@@ -22,7 +21,7 @@ class ResultButton(QWidget):
         """)
 
         self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(0, 0, 0, 0)  
+        self.layout.setContentsMargins(0, 0, 0, 0)
 
         # Text Button
         self.button = QPushButton()
@@ -52,23 +51,33 @@ class ResultButton(QWidget):
         self.button.setText(short_query)
         self.layout.addWidget(self.button)
 
-        # Icon Button overlay
+        # Icon Button
         self.icon_button = QPushButton(self)
         self.icon_button.setIcon(QIcon("src/UI/assets/delete.png"))
         self.icon_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.icon_button.setFixedSize(20, 20)
-        self.icon_button.move(self.width() - 26, 10)  # Position at top-right (adjust as needed)
+        self.icon_button.move(self.width() - 26, 10)
         self.icon_button.setStyleSheet("""
             QPushButton {
                 background-color: transparent;
                 border: none;
             }
         """)
+        self.icon_button.hide()  # Initially hidden
 
     def resizeEvent(self, event):
-        """Reposition icon when widget resizes"""
         super().resizeEvent(event)
         self.icon_button.move(self.width() - 26, 10)
+
+    def enterEvent(self, event):
+        """Show icon button on hover"""
+        self.icon_button.show()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        """Hide icon button when not hovering"""
+        self.icon_button.hide()
+        super().leaveEvent(event)
 
     def setChecked(self, checked: bool):
         self.button.setChecked(checked)
@@ -81,4 +90,3 @@ class ResultButton(QWidget):
 
     def on_icon_clicked(self, callback):
         self.icon_button.clicked.connect(callback)
-

@@ -15,18 +15,16 @@ class DBManager:
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
+        self.embedding_model = get_embedding_model()
         # New connected database
         if not os.path.isdir(f"history/databases/{self.db_name}"):
             os.makedirs(f"history/databases/{self.db_name}")
             self.schema = self.loadSchema()
             self.primary_keys, self.foreign_keys = self.loadRelationships(self.schema)
-            embedding_model = get_embedding_model()
-            self.embeddings = self.embedDescriptions(embedding_model)
-            self.saveDescToFile()
-            self.saveSchemaToFile()
+            self.embeddings = self.embedDescriptions()
+            self.save()
         else: # was connected before
-            self.loadSchemaFromFile()
-            self.loadDescFromFile()
+            self.load()
 
 
     def loadSchema(self) -> Dict[str, Dict[str, str]]:
@@ -90,15 +88,18 @@ class DBManager:
     def setDescription(self, table_name : str, column_name : str, desc: str):
         self.schema[table_name][column_name] = desc
 
-    def embedDescriptions(self, embedding_model):
+    def embedDescription(self, table, column, desc):
+        if desc != "":
+            desc_emb = self.embedding_model.encode(desc, convert_to_tensor=True)
+            self.embeddings[table][column] = desc_emb
+
+    def embedDescriptions(self):
         embeddings = {}
         for table in self.schema:
             embeddings[table] = {}
             for col in self.schema[table]:
                 desc = self.schema[table][col]
-                if desc != "":
-                    desc_emb = embedding_model.encode(desc, convert_to_tensor=True)
-                    embeddings[table][col] = desc_emb
+                self.embedDescription(table, col, desc)
         return embeddings
     
     def saveDescToFile(self):
@@ -116,6 +117,14 @@ class DBManager:
     def loadSchemaFromFile(self):
         with open(f"history/databases/{self.db_name}/schema.pkl", 'rb') as f:
             self.schema, self.primary_keys, self.foreign_keys = pickle.load(f)
+
+    def save(self):
+        self.saveSchemaToFile()
+        self.saveDescToFile()
+    
+    def load(self):
+        self.loadSchemaFromFile()
+        self.loadDescFromFile()
     
 if __name__ == '__main__':
     db_manager = DBManager(DB_PATH)

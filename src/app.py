@@ -16,19 +16,20 @@ class App(QApplication):
                 db_path = f.read()
             self.window = MainAppWindow(db_path)
             self.window.showMaximized()
+            self.window.sidebar.db_changed.connect(self.changeDatabase)
         else:
-            window = InitialPage()
-            window.show()
+            self.window = InitialPage()
+            self.window.show()
+            self.window.connected.connect(self.changeDatabase)
         
-        self.window.sidebar.db_changed.connect(self.changeDatabase)
 
     def changeDatabase(self, db_path):
         if db_path:
-            print("Selected file:", db_path)
             with open('history/curr_database.txt', 'w') as f:
                 f.write(db_path)
             self.window.close()
-            self.window.sidebar.db_changed.disconnect(self.changeDatabase)
+            if hasattr(self.window, 'sidebar'):
+                self.window.sidebar.db_changed.disconnect(self.changeDatabase)
             self.window = MainAppWindow(db_path)
             self.window.sidebar.db_changed.connect(self.changeDatabase)
             self.window.showMaximized()

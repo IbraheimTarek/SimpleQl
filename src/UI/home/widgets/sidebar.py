@@ -222,10 +222,12 @@ class Sidebar(QFrame):
     
     def add_query_result(self, query_text, query_sql, rows, columns):
         """Add a new query result to the sidebar"""
+        self.query_counter += 1
 
         # Make plots
+        dir = self.results_directory + f"/{self.query_counter}"
         df = pd.DataFrame(rows, columns=columns)
-        plotter = DataVizTool(df, f"{self.results_directory}/{self.query_counter}/plots")
+        plotter = DataVizTool(df, f"{dir}/plots")
         try:
             plotter._run("Plot automatically")
         except:
@@ -236,13 +238,10 @@ class Sidebar(QFrame):
                 QMessageBox.StandardButton.Ok
             )
 
-        self.query_counter += 1
         timestamp = datetime.now().strftime("%H:%M:%S")
         
         # Create file path for storing result
         filename = f"{self.query_counter}.json"
-        dir = self.results_directory + f"/{self.query_counter}"
-        os.makedirs(dir)
         file_path = os.path.join(dir, filename)
         
         # Save result data to file

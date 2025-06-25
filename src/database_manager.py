@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 import pickle
 import os
 from models import get_embedding_model
-
+from Params import DB_PATH
 
 class DBManager:
     def __init__(self, db_path: str):
@@ -118,7 +118,7 @@ class DBManager:
             self.schema, self.primary_keys, self.foreign_keys = pickle.load(f)
     
 if __name__ == '__main__':
-    db_manager = DBManager("D:/University/4th year/2nd Semester/GP/Datasets/BIRD/train/train_databases/movie_platform/movie_platform.sqlite")
+    db_manager = DBManager(DB_PATH)
     print(db_manager.schema)
     print(db_manager.primary_keys)
     print(db_manager.foreign_keys)

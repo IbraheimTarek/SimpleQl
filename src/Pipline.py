@@ -1,11 +1,11 @@
 import pandas as pd
 from pipeline.query_generator.CandidateGenerator import *
 from plotter.Plotter import *
+from plotter.schema_explorer import *
 from pipeline.query_generator.ValidateQueries import UnitTester 
 from pipeline.question_processing.schema_selector import *
 from models import get_spacy_model, get_embedding_model
 from database_manager import DBManager
-
 
 def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0):
     spacy_model = get_spacy_model()
@@ -52,11 +52,14 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     
 if __name__ == "__main__":
 
-    question = "Units sold per supplier"
+    question = "Name movie titles released in year 1945. Sort the listing by the descending order of movie popularity."
     db_path = DB_PATH
     db_manager = DBManager(db_path)
-    _, rows, columns = run_pipeline(question, db_manager)
-    df_result = pd.DataFrame(rows, columns=columns)
-    viz_tool = DataVizTool(df_result)
-    result = viz_tool.run("Plot automatically")
-    print(result)
+    schema_explorer = SchemaExplorer(db_manager)
+    print("key tuples:", db_manager.foreign_keys)
+    # schema_explorer.run()
+    # _, rows, columns = run_pipeline(question, db_manager)
+    # df_result = pd.DataFrame(rows, columns=columns)
+    # viz_tool = DataVizTool(df_result)
+    # result = viz_tool.run("Plot automatically")
+    # print(result)

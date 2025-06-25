@@ -33,7 +33,7 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     print("\nAccepted (non-empty) candidates:", candidates)
 
     if not candidates:                       # nothing usable
-        return None                          # or raise/custom-handle
+        return None, None,None                          # or raise/custom-handle
 
     # choose the best query
     if len(candidates) == 1:
@@ -52,14 +52,18 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     
 if __name__ == "__main__":
 
-    question = "Name movie titles released in year 1945. Sort the listing by the descending order of movie popularity."
+    question = "Top-10 customers by lifetime spend"
     db_path = DB_PATH
     db_manager = DBManager(db_path)
     schema_explorer = SchemaExplorer(db_manager)
     print("key tuples:", db_manager.foreign_keys)
-    # schema_explorer.run()
-    # _, rows, columns = run_pipeline(question, db_manager)
-    # df_result = pd.DataFrame(rows, columns=columns)
-    # viz_tool = DataVizTool(df_result)
-    # result = viz_tool.run("Plot automatically")
-    # print(result)
+    schema_explorer.run()
+    _, rows, columns = run_pipeline(question, db_manager)
+
+    if rows is None:
+        print("No results found for the question.")
+        exit(0)
+    df_result = pd.DataFrame(rows, columns=columns)
+    viz_tool = DataVizTool(df_result)
+    result = viz_tool.run("Plot automatically")
+    print(result)

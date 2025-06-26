@@ -15,7 +15,7 @@ class MainAppWindow(QMainWindow):
  
     def init_ui(self):
         """Initialize the main window UI"""
-        self.setWindowTitle("SimpleQL - Database Management Tool")
+        self.setWindowTitle("SimpleQL")
         
         # Set window background
         self.setStyleSheet("""
@@ -42,7 +42,6 @@ class MainAppWindow(QMainWindow):
         # Connect signals
         self.main_content.text_input.query_executed.connect(self.sidebar.add_query_result)
         self.sidebar.result_clicked.connect(self.main_content.load_result_from_file)
-        self.sidebar.db_changed.connect(self.changeDatabase)
         self.main_content.new_question.connect(self.sidebar.clear_checked)
 
         # Add widgets to layout
@@ -55,15 +54,4 @@ class MainAppWindow(QMainWindow):
         """Trigger when the window is resized"""
         super().resizeEvent(event)
         self.main_content.text_input.on_text_changed()
-
-    def changeDatabase(self, db_path):
-        if db_path:
-            print("Selected file:", db_path)
-            with open('history/curr_database.txt', 'w') as f:
-                f.write(db_path)
-            widget = self.centralWidget()
-            if widget:
-                widget.deleteLater()
-            self.db_manager = DBManager(db_path)
-            self.initial = True
-            self.init_ui()
+        

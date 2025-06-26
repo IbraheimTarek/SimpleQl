@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QTextEdit
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QTextEdit, QMessageBox, QWidget
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QIcon, QMovie
 
@@ -18,13 +18,13 @@ class Worker(QObject):
         if self.running:
             return
         self.running = True
-        try:
-            query_sql, rows, columns = run_pipeline(self.query_text, self.db_manager)
-            if query_sql and rows and columns:
-                self.result.emit(self.query_text, query_sql, rows, columns)
-        finally:
-            self.running = False
-            self.finished.emit()
+
+        query_sql, rows, columns = run_pipeline(self.query_text, self.db_manager)
+        if query_sql and rows and columns:
+            self.result.emit(self.query_text, query_sql, rows, columns)
+
+        self.running = False
+        self.finished.emit()
 
 class TextBox(QFrame):
     query_executed = pyqtSignal(str, str, list, list)  # query_text, query_sql, rows, columns
@@ -169,8 +169,24 @@ class TextBox(QFrame):
         self.thread.finished.connect(self.thread.deleteLater)
 
         self.worker.result.connect(self.on_query_executed)
+        try:
+            self.thread.start()
+        except:
+            msg = QMessageBox.critical(
+                self, 
+                "خطأ", 
+                "تعذر انتاج الكود المناسب لهذا السؤال. الرجاء تحسين السؤال او حاول مرة اخري", 
+                QMessageBox.StandardButton.Ok
+            )
+            self.spinner.stop()
+            self.execute_button.setIcon(QIcon())
+            self.execute_button.setText("▶")
+            self.execute_button.setEnabled(True)
+            self.worker.running = False
 
-        self.thread.start()
+            # When user clicks OK, stop the thread (if running)
+            if self.thread.isRunning():
+                msg.buttonClicked.connect(self.thread.quit)
 
     @pyqtSlot(str, str, list, list)
     def on_query_executed(self, query_text, query_sql, rows, columns):

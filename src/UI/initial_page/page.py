@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QSizePolicy, QSpacerItem,
     QHBoxLayout, QProgressBar, QFileDialog
 )
-from PyQt6.QtCore import Qt, QSize, QTimer, QEvent, QPropertyAnimation
+from PyQt6.QtCore import Qt, QSize, QTimer, QEvent, QPropertyAnimation, pyqtSignal
 from PyQt6.QtGui import QFont, QIcon, QPixmap
 
 from UI.initial_page.widgets.image import ImageWidget
@@ -12,6 +12,9 @@ from UI.home.page import MainAppWindow
 
 
 class InitialPage(QWidget):
+
+    connected = pyqtSignal(str)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("SimpleQL")
@@ -180,12 +183,7 @@ class InitialPage(QWidget):
     def on_progress_complete(self):
         # Prevent multiple calls if signal fires more than once
         self.progress_anim.finished.disconnect(self.on_progress_complete)
-
-        with open('history/curr_database.txt', 'w') as f:
-            f.write(self.db_path)
-        
-        self.main_window = MainAppWindow(self.db_path)
-        self.main_window.showMaximized()
+        self.connected.emit(self.db_path)
         self.close()
 
     # for fancy loading

@@ -6,7 +6,7 @@ from pipeline.query_generator.ValidateQueries import UnitTester
 from pipeline.question_processing.schema_selector import *
 from models import get_spacy_model, get_embedding_model
 from database_manager import DBManager
-from src.pipeline.translator import translate
+from pipeline.translator.Translator import translate
 
 def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0):
     spacy_model = get_spacy_model()

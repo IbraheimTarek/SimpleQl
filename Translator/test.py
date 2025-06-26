@@ -20,11 +20,11 @@ def process_instruction(instr):
 
 
 if __name__ == "__main__":
-    test_data = pd.read_csv("./test_data.csv")
-    instructions =test_data["arabic_instruction"].tolist()
+    test_data = pd.read_csv("./train_data.csv")
+    instructions =test_data.loc[12000:,"arabic_instruction"].tolist()
 
-    with Pool(processes=int(cpu_count()/2)) as pool:
+    with Pool(processes=10) as pool:
         results = list(tqdm(pool.imap(process_instruction, instructions), total=len(instructions)))
     test = pd.Series(results)
-    test.to_pickle("./tested.pkl")
+    test.to_pickle("./train_12000.pkl")
     

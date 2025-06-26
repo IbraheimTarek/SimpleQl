@@ -5,7 +5,7 @@ from pipeline.query_generator.ValidateQueries import UnitTester
 from pipeline.question_processing.schema_selector import *
 from models import get_spacy_model, get_embedding_model
 from database_manager import DBManager
-
+from src.pipeline.translator import translate
 
 def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, similarity_threshold=0):
     spacy_model = get_spacy_model()
@@ -55,7 +55,7 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     
 if __name__ == "__main__":
 
-    question = "What is the full address of the restaurant named 'Sanuki Restaurant'?"
+    question = translate("ما هو العنوان الكامل للمطعم المسمى 'sanuki restraunt' ؟")
     db_path = DB_PATH
     db_manager = DBManager(db_path)
     run_pipeline(question, db_manager)

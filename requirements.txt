@@ -8,3 +8,4 @@ fuzzywuzzy
 keybert
 spacy-model-en_core_web_sm
 torch
+farasapy

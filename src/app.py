@@ -1,6 +1,7 @@
 import os
 
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtGui import QIcon
 from UI.home.page import MainAppWindow
 from UI.initial_page.page import InitialPage
 
@@ -15,6 +16,7 @@ class App(QApplication):
             with open('history/curr_database.txt', 'r') as f:
                 db_path = f.read()
             self.window = MainAppWindow(db_path)
+            self.window.setWindowIcon(QIcon("src/UI/assets/gp_logo_small.png"))
             self.window.showMaximized()
             self.window.sidebar.db_changed.connect(self.changeDatabase)
         else:
@@ -31,6 +33,7 @@ class App(QApplication):
             if hasattr(self.window, 'sidebar'):
                 self.window.sidebar.db_changed.disconnect(self.changeDatabase)
             self.window = MainAppWindow(db_path)
+            self.window.setWindowIcon(QIcon("src/UI/assets/gp_logo_small.png"))
             self.window.sidebar.db_changed.connect(self.changeDatabase)
             self.window.showMaximized()
 

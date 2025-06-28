@@ -271,8 +271,3 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
         all_candidates.append((candidate_query, results, error))
 
     return all_candidates
-
-
-    res = run_candidate_generator(question, db_path, new_schema, 3)
-    print("\n final candidates:")
-    print(res)

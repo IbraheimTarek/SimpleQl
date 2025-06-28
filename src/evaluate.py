@@ -89,13 +89,14 @@ def evaluate(max_samples=MAX_SAMPLES):
     tp_sum = pred_total = gt_total = 0
 
     for idx, item in enumerate(samples, 1):
+        # get db_id, question, and ground-truth SQL from BIRD
         db_id    = item["db_id"]
         question = item["question"]
         gt_sql   = item["SQL"]
 
         db_path = DB_ROOT / db_id / f"{db_id}.sqlite"
 
-        
+        # if the data base file does not exist, skip this sample and add one bad test as it exists inside bird but can't find it.
         if not db_path.exists():
             print(f"[{idx:03}] X DB file not found for {db_id}; skipping.")
             bad += 1
@@ -109,7 +110,7 @@ def evaluate(max_samples=MAX_SAMPLES):
             pred_sql, pred_rows, pred_cols = run_pipeline(question, dbm)
             latencies.append(time.perf_counter() - start_time)
             token_costs.append(count_tokens(pred_sql or "")) 
-
+        # if pipeline crashes, catch the exception and add one bad test
         except Exception as e:   # hard failure inside pipeline
             print(f"[{idx:03}] X Pipeline crashed: {e}")
             bad += 1
@@ -118,7 +119,7 @@ def evaluate(max_samples=MAX_SAMPLES):
             )
             continue
 
-        # pipeline returned None -> skip
+        # pipeline returned None add one bad test
         if pred_rows is None:
             print(f"[{idx:03}] X Pipeline produced no answer.")
             bad += 1
@@ -131,7 +132,7 @@ def evaluate(max_samples=MAX_SAMPLES):
         gt_rows, gt_cols, err = execute_query_rows_columns(str(db_path), gt_sql)
         if err:
             print(f"[{idx:03}] ! GT SQL failed ({err}); skipping.")
-            continue  # not counted
+            continue
 
         # compare 
         # F1 for this sample

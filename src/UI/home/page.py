@@ -2,7 +2,7 @@ from UI.home.widgets.main_content import MainContent
 from UI.home.widgets.sidebar import Sidebar
 from database_manager import DBManager
 
-from PyQt6.QtWidgets import QApplication, QMainWindow, QWidget, QHBoxLayout                
+from PyQt6.QtWidgets import QMainWindow, QWidget, QHBoxLayout                
 
 class MainAppWindow(QMainWindow):
     """Main application window with sidebar and content area"""
@@ -16,15 +16,12 @@ class MainAppWindow(QMainWindow):
     def init_ui(self):
         """Initialize the main window UI"""
         self.setWindowTitle("SimpleQL")
-        
-        # Set window background
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #F8FAFC;
             }
         """)
         
-        # Create central widget
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
@@ -33,10 +30,10 @@ class MainAppWindow(QMainWindow):
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         
-        # Create main content area
+        # Main content area
         self.main_content = MainContent(self.db_manager, self.initial)
         
-        # Create sidebar
+        # Sidebar
         self.sidebar = Sidebar(self.db_manager)
 
         # Connect signals
@@ -51,7 +48,10 @@ class MainAppWindow(QMainWindow):
         central_widget.setLayout(main_layout)
 
     def resizeEvent(self, event):
-        """Trigger when the window is resized"""
+        """
+        Override for `resizeEvent` event for QMainWindow.
+        Triggers when the window is resized.
+        """
         super().resizeEvent(event)
         self.main_content.text_input.on_text_changed()
         

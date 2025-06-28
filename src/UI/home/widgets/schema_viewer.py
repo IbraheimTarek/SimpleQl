@@ -87,6 +87,8 @@ class SchemaViewer(QDialog):
     def save_descriptions(self):
         for (table, column), input_field in self.description_inputs.items():
             desc = input_field.text()
+            if desc == "":
+                continue
             self.schema_data[table][column] = desc
             translated_desc = translate(desc)
             print(f"Translated Desc: ", translated_desc)

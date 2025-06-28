@@ -190,14 +190,21 @@ class InitialPage(QWidget):
         func(self.finish_step)
 
     def finish_step(self):
+        """
+        Updates progress after finishing a step.
+        """
         self.current_step += 1
         progress = int((self.current_step / len(self.steps)) * 100)
         self.set_progress_value(progress)
         self.run_next_step()
 
     def on_progress_complete(self):
+        """
+        Signals that all steps are done and progress is completed.
+        """
         # Prevent multiple calls if signal fires more than once
         self.progress_anim.finished.disconnect(self.on_progress_complete)
+
         self.connected.emit(self.db_path)
         self.close()
 
@@ -205,6 +212,7 @@ class InitialPage(QWidget):
     def step1(self, done_callback):
         QTimer.singleShot(500, done_callback)
 
+    # Real work
     def step2(self, done_callback):
         self.db_manager = DBManager(self.db_path)
         QTimer.singleShot(700, done_callback)

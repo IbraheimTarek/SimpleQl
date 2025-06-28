@@ -3,6 +3,13 @@ from PyQt6.QtCore import Qt, QPropertyAnimation, QSize, QEasingCurve, Qt
 from PyQt6.QtGui import QFont, QIcon
 
 class AnimatedButton(QPushButton):
+    """
+    An animated button for the setup screen
+
+    Args:
+        text (str): the text to be displayed in the button
+        icon (Union[None|QIcon]): the icon to be displayed in the button
+    """
     def __init__(self, text, icon: QIcon = None):
         super().__init__(text)
         self.anim_enabled = True
@@ -36,6 +43,9 @@ class AnimatedButton(QPushButton):
         self.anim.setEasingCurve(QEasingCurve.Type.InOutQuad)
 
     def enterEvent(self, event):
+        """
+        Override for the `enterEvent` event for QPushButton
+        """
         if not self.anim_enabled:
             return
         self.anim.stop()
@@ -55,6 +65,9 @@ class AnimatedButton(QPushButton):
         super().enterEvent(event)
 
     def leaveEvent(self, event):
+        """
+        Override for the `leaveEvent` event for QPushButton
+        """
         if not self.anim_enabled:
             return
         self.anim.stop()

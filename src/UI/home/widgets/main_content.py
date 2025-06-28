@@ -216,6 +216,8 @@ class MainContent(QFrame):
 
         if self.initial:
             self.main_layout.insertStretch(0)
+            self.main_layout.insertStretch(self.main_layout.count() - 1)
+
             self.plots_area.hide()
             self.plots_label.hide()
             self.plots_empty.hide()
@@ -239,6 +241,8 @@ class MainContent(QFrame):
             self.text_input.text_edit.clear()
         else:
             self.main_layout.removeItem(self.main_layout.itemAt(0))
+            self.main_layout.removeItem(self.main_layout.itemAt(self.main_layout.count() - 1))
+
             self.plots_label.show()
 
             self.results_area.show()

@@ -214,9 +214,6 @@ class Sidebar(QFrame):
         main_layout.addLayout(self.db_buttons_layout)
 
         self.load_query_results()
-
-        if self.query_counter != 0:
-            self.empty_label.hide()
         
         self.setLayout(main_layout)
     
@@ -289,7 +286,9 @@ class Sidebar(QFrame):
     
     def load_query_results(self):
         # Remove old buttons from layout
-        for i in reversed(range(self.buttons_layout.count())):
+        for i in range(self.buttons_layout.count()):
+            if i == 0 or i == self.buttons_layout.count() - 1: # skip empty label and stretch
+                continue 
             item = self.buttons_layout.itemAt(i)
             widget = item.widget()
             if widget is not None:
@@ -333,7 +332,8 @@ class Sidebar(QFrame):
 
         if self.query_counter != 0:
             self.clear_button.setEnabled(True)
-                 
+            self.empty_label.hide()
+                
     def on_result_clicked(self, clicked_button):
         """Handle result button click"""
         self.select_button(clicked_button)
@@ -399,16 +399,14 @@ class Sidebar(QFrame):
             dir = f"history/databases/{self.db_name}/query_results/{query_id}"
             shutil.rmtree(dir)
             
-            if query_id == self.query_counter:
-                self.query_counter -= 1
-
             # Show empty label if all deleted
-            if self.query_counter == 0:
+            if len(self.query_buttons) == 0:
+                self.query_counter = 0
                 self.empty_label.show()
                 self.clear_button.setEnabled(False)
             
             # Clear main content if its the current button
-            if self.curr_button.query_id == query_id:
+            if self.curr_button and self.curr_button.query_id == query_id:
                 self.result_clicked.emit("")
                 self.clear_checked()
 

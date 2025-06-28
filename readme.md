@@ -63,7 +63,6 @@ GROQ_API_KEY=your_key_here
 ```bash
 git clone https://github.com/IbraheimTarek/SimpleQl.git
 cd SimpleQl
-cp ../.env ./
 pip install -r requirements.txt
 ./src/setup_models.sh
 ```

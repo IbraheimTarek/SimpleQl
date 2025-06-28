@@ -106,7 +106,7 @@ class DataVizTool(BaseTool):
 
     def is_id_column(self, colname):
         colname = colname.lower()
-        pattern = r'(^id$|^id[\-_].*|.*[\-_]id$|.*[\-_]id[\-_].*)'
+        pattern = r'(^id$|^id[\-_].*|.*[\-_]id$|.*[\-_]id[\-_].*|.*id$)'
         return bool(re.match(pattern, colname))
 
     def shorten_label(self, label, max_len=11):

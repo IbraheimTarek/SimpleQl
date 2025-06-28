@@ -226,6 +226,8 @@ class Sidebar(QFrame):
 
         # Make plots
         dir = self.results_directory + f"/{self.query_counter}"
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         df = pd.DataFrame(rows, columns=columns)
         plotter = DataVizTool(df, f"{dir}/plots")
         try:

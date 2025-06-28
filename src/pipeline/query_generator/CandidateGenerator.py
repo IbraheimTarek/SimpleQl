@@ -192,7 +192,7 @@ def execute_query_rows_columns(db_path, query):
     try:
         cursor.execute(query)
         rows    = cursor.fetchall()
-        columns = [d[0] for d in cursor.description]  # NEW
+        columns = [d[0] for d in cursor.description] 
         return rows, columns, None
     except Exception as e:
         return None, None, str(e)
@@ -220,7 +220,7 @@ def get_schema_and_context(db_path):
             table_name = table_tuple[0]
             table_names.append(table_name)
             # Retrieve table info (columns and types)
-            cursor.execute(f"PRAGMA table_info({table_name});")
+            cursor.execute(f"PRAGMA table_info('{table_name}');")
             columns = cursor.fetchall()
             # Format each table's schema as: table_name(col1 type, col2 type, ...)
             col_defs = ", ".join([f"{col[1]} {col[2]}" for col in columns])

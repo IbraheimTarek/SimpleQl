@@ -5,7 +5,7 @@ import pandas as pd
 import time, itertools
 from datetime import datetime
 from Params import *
-from Pipline import run_pipeline
+from run_pipeline import run_pipeline
 from database_manager import DBManager
 from pipeline.query_generator.CandidateGenerator import execute_query_rows_columns, execute_query   
 

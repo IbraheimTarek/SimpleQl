@@ -3,6 +3,8 @@ from PyQt6.QtWidgets import (
     QScrollArea, QGroupBox, QHBoxLayout, QDialog
 )
 
+from pipeline.translator.Translator import translate
+
 class SchemaViewer(QDialog):
     def __init__(self, db_manager: dict, parent=None):
         super().__init__(parent)
@@ -84,8 +86,11 @@ class SchemaViewer(QDialog):
 
     def save_descriptions(self):
         for (table, column), input_field in self.description_inputs.items():
-            self.schema_data[table][column] = input_field.text()
-            self.db_manager.embedDescription(table, column, input_field.text())
+            desc = input_field.text()
+            self.schema_data[table][column] = desc
+            translated_desc = translate(desc)
+            print(f"Translated Desc: ", translated_desc)
+            self.db_manager.embedDescription(table, column, translated_desc)
         self.db_manager.save()
         print("Updated schema:", self.schema_data)
         self.accept()

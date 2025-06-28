@@ -21,7 +21,7 @@ class DBManager:
             os.makedirs(f"history/databases/{self.db_name}")
             self.schema = self.loadSchema()
             self.primary_keys, self.foreign_keys = self.loadRelationships(self.schema)
-            self.embeddings = self.embedDescriptions()
+            self.embeddings = self.schema
             self.save()
         else: # was connected before
             self.load()
@@ -92,15 +92,6 @@ class DBManager:
         if desc != "":
             desc_emb = self.embedding_model.encode(desc, convert_to_tensor=True)
             self.embeddings[table][column] = desc_emb
-
-    def embedDescriptions(self):
-        embeddings = {}
-        for table in self.schema:
-            embeddings[table] = {}
-            for col in self.schema[table]:
-                desc = self.schema[table][col]
-                self.embedDescription(table, col, desc)
-        return embeddings
     
     def saveDescToFile(self):
         with open(f'history/databases/{self.db_name}/embeddings.pkl', 'wb') as f:

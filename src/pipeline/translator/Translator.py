@@ -17,7 +17,7 @@ def translate(text):
             url = "https://api.mymemory.translated.net/get"
             params = {
                 "q": text,
-                "langpair": "en|ar",
+                "langpair": "ar|en",
                 "key": "43a221557ce746042181",
                 "de": "abdohefney1@gmail.com"
             }

@@ -3,7 +3,6 @@ import requests
 
 # using mymemory to generate the Arabic Training Data
 def translate(text):
-        
         url = "https://api.mymemory.translated.net/get"
         params = {
             "q": text,

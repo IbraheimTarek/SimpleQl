@@ -12,7 +12,6 @@ class BahdanauAttention(nn.Module):
         self.v = nn.Linear(attn_dim, 1)
         
     def forward(self, decoder_hidden, encoder_outputs, mask):
-        """Forward pass with proper mask handling"""
         # decoder_hidden: [batch_size, dec_hid_dim]
         # encoder_outputs: [batch_size, src_len, enc_hid_dim]
         # mask: [batch_size, src_len] (boolean mask)

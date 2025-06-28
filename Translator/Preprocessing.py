@@ -23,7 +23,7 @@ r'''
                 \u08A0-\u08FF
                 \uFB50-\uFDFF
                 \uFE70-\uFEFF
-                \(\)\\
+                \(\)
             ]+
         )
     '''
@@ -52,11 +52,11 @@ r'''
         filtered = [item.strip() for item in temp if item != " "]
         return filtered
     
-    def extract_non_arabic_in_list(self,tokens_list):
-        list_of_english_tokens = [self.extract_non_arabic_from_str(token, self.non_arab) for token in tokens_list]
-        flat_list = [item for sublist in list_of_english_tokens for item in sublist]
-        english_tokens = [token for token in flat_list if token != "+"]
-        return english_tokens
+    def extract_non_arabic_in_list(preprocessor,tokens_list):
+        text = " ".join(tokens_list)
+        list_of_english_tokens = preprocessor.extract_non_arabic_from_str(text, preprocessor.non_arab)
+        list_of_english_tokens = [x for x in list_of_english_tokens if x != "+"]
+        return list_of_english_tokens
     
     def normalize_and_convert_digits(self,tokens_list):
         tokens_list    = [self.convert_arabic_digits_to_english(token) for token in tokens_list]

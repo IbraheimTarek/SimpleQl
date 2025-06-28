@@ -14,10 +14,15 @@ from PyQt6.QtGui import QIcon
 
 
 class Sidebar(QFrame):
-    """Dynamic sidebar that starts empty and adds query results"""
+    """
+    Dynamic sidebar to store history for current database
+
+    Args:
+        db_manager (DBManager): Manager for current database
+    """
     
-    result_clicked = pyqtSignal(str)  # file_path
-    db_changed = pyqtSignal(str) # file_path
+    result_clicked = pyqtSignal(str)  # Signal to indicate which sidebar button is clicked, emits(file_path)
+    db_changed = pyqtSignal(str) # Signal to indicate that the current database has changed, emits(db_path)
     
     def __init__(self, db_manager, query_counter=0, query_buttons : list = [], parent=None):
         super().__init__(parent)
@@ -31,7 +36,6 @@ class Sidebar(QFrame):
         self.create_results_directory()
         
     def create_results_directory(self):
-        """Create directory for storing query results"""
         if not os.path.exists(self.results_directory):
             os.makedirs(self.results_directory)
             
@@ -64,7 +68,7 @@ class Sidebar(QFrame):
         """)
         main_layout.addWidget(self.title_label)
         
-        # Scrollable area for query buttons
+        # Scrollable area for history buttons
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -105,7 +109,7 @@ class Sidebar(QFrame):
         self.buttons_layout.setContentsMargins(0, 0, 0, 0)
         self.buttons_layout.setSpacing(4)
         
-        # Empty state label
+        # Empty label whne there are no history
         self.empty_label = QLabel("لم يتم تنفيذ اي اسئلة بعد \n قم بتنفيذ اي سؤال عن بياناتك ")
         self.empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty_label.setStyleSheet("""
@@ -218,7 +222,7 @@ class Sidebar(QFrame):
         self.setLayout(main_layout)
     
     def add_query_result(self, query_text, query_sql, rows, columns):
-        """Add a new query result to the sidebar"""
+        """Add a new question result to the sidebar"""
         self.query_counter += 1
 
         # Make plots
@@ -257,7 +261,6 @@ class Sidebar(QFrame):
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(result_info, f, indent=2, ensure_ascii=False)
         except Exception as e:
-            print(f"Error saving result: {e}")
             return
         
         # Remove empty label if this is the first query
@@ -273,7 +276,7 @@ class Sidebar(QFrame):
         button.clicked(lambda: self.on_result_clicked(button))
         button.on_icon_clicked(lambda: self.clear_result(button.query_id))
         
-        # Add button to layout (insert at top, after removing stretch)
+        # Add button to layout
         self.buttons_layout.removeItem(self.buttons_layout.itemAt(self.buttons_layout.count() - 1))  # Remove stretch
         self.buttons_layout.insertWidget(1, button)  # Insert after empty label (which is hidden)
         self.buttons_layout.addStretch()  # Add stretch back
@@ -285,6 +288,9 @@ class Sidebar(QFrame):
         self.on_result_clicked(button)
     
     def load_query_results(self):
+        """
+        Loads all history for the current database
+        """
         # Remove old buttons from layout
         for i in range(self.buttons_layout.count()):
             if i == 0 or i == self.buttons_layout.count() - 1: # skip empty label and stretch
@@ -302,7 +308,7 @@ class Sidebar(QFrame):
         if not os.path.isdir(self.results_directory):
             os.makedirs(self.results_directory)
             self.query_counter = 0
-
+        
         results = os.listdir(self.results_directory)
         if len(results) == 0:
             self.query_counter = 0
@@ -312,7 +318,6 @@ class Sidebar(QFrame):
 
             for dir in reversed(dirs):
                 file_path = os.path.join(self.results_directory, dir + f"/{int(dir)}.json")
-                print(file_path)
                 with open(file_path, 'r', encoding='utf-8') as f:
                     result = json.load(f)
                 button = ResultButton(
@@ -322,9 +327,9 @@ class Sidebar(QFrame):
                 button.clicked(lambda _, b=button: self.on_result_clicked(b))
                 button.on_icon_clicked(lambda _, b=button: self.clear_result(b.query_id))
                 
-                # Add button to layout (insert at top, after removing stretch)
+                # Add button to layout 
                 self.buttons_layout.removeItem(self.buttons_layout.itemAt(self.buttons_layout.count() - 1))  # Remove stretch
-                self.buttons_layout.addWidget(button)  
+                self.buttons_layout.addWidget(button)  # Add button
                 self.buttons_layout.addStretch()  # Add stretch back
                 
                 # Add to tracking list
@@ -346,7 +351,7 @@ class Sidebar(QFrame):
             button.setChecked(button == selected_button)
     
     def clear_all_results(self):
-        """Clear all query results"""
+        """Clears all history"""
         reply = QMessageBox.question(
             self, 
             'Clear All Results', 
@@ -356,11 +361,11 @@ class Sidebar(QFrame):
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            # Remove all buttons
+            # Remove all buttons and their corresponding files
             for button in self.query_buttons:
                 button.deleteLater()
                 button.setParent(None)
-                # Try to delete the associated file
+                
                 dir = f"history/databases/{self.db_name}/query_results"
                 for filename in os.listdir(dir):
                     file_path = os.path.join(dir, filename)
@@ -377,7 +382,7 @@ class Sidebar(QFrame):
             self.result_clicked.emit("")
 
     def clear_result(self, query_id):
-        """Clear current query results"""
+        """Clears selected instance of history"""
         reply = QMessageBox.question(
             self, 
             'Clear Results', 
@@ -395,7 +400,7 @@ class Sidebar(QFrame):
                     button.setParent(None)
                     self.buttons_layout.removeWidget(button)
                     break
-            # Try to delete the associated file
+            # Delete the associated file
             dir = f"history/databases/{self.db_name}/query_results/{query_id}"
             shutil.rmtree(dir)
             
@@ -411,6 +416,7 @@ class Sidebar(QFrame):
                 self.clear_checked()
 
     def changeDatabase(self):
+        """Handles when change DB button is pressed"""
         file_path, _ = QFileDialog.getOpenFileName(
             parent=self,
             caption="(.sqlite) اختر قاعدة بياناتك",
@@ -420,11 +426,12 @@ class Sidebar(QFrame):
         self.db_changed.emit(file_path)
 
     def clear_checked(self):
+        """Make all buttons disabled"""
         self.curr_button = None
         for button in self.query_buttons:
             button.setChecked(False)     
 
     def open_schema_viewer(self):
+        """Opens the schema viewer window"""
         dialog = SchemaViewer(self.db_manager)
         dialog.exec()
-        print(self.db_manager.schema)   

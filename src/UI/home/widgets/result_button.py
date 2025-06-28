@@ -4,6 +4,7 @@ from PyQt6.QtCore import Qt
 
 
 class ResultButton(QWidget):
+    """Button widget for history"""
     def __init__(self, query_text, query_id, parent=None):
         super().__init__(parent)
         self.query_id = query_id

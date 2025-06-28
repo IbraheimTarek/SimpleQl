@@ -14,7 +14,7 @@ from PyQt6.QtGui import QIcon
 
 
 class MainContent(QFrame):
-    """Main content area with textbox and label"""
+    """Main content area of the main window"""
     new_question = pyqtSignal()
 
     def __init__(self, db_manager, initial : bool, parent=None):
@@ -72,13 +72,14 @@ class MainContent(QFrame):
             }
         """)
         self.main_layout.addWidget(self.textbox_label)
-        # Integrated text input with execute button
+        # Text box
         self.text_input = TextBox(self.db_manager)
         self.main_layout.addWidget(self.text_input)
         
         # Additional action buttons
         button_layout = QHBoxLayout()
 
+        # New question button
         self.new_button = QPushButton("سؤال جديد")
         self.new_button.setStyleSheet("""
             QPushButton {
@@ -100,6 +101,7 @@ class MainContent(QFrame):
         """)
         self.new_button.clicked.connect(self.on_new_question_pressed)
 
+        # Show code button
         self.sql_button = QPushButton("اظهر الكود") 
         self.sql_button.setStyleSheet("""
             QPushButton {
@@ -128,7 +130,7 @@ class MainContent(QFrame):
         
         self.main_layout.addLayout(button_layout)
         
-        # Plot area placeholder
+        # Plots label 
         self.plots_label = QLabel("الرسومات البيانية")
         self.plots_label.setStyleSheet("""
             QLabel {
@@ -141,7 +143,7 @@ class MainContent(QFrame):
         """)
         self.main_layout.addWidget(self.plots_label)
         
-        # plots
+        # Plots
         self.plots_area = QScrollArea()
         self.plots_area.setFixedHeight(200)
         self.plots_area.setWidgetResizable(True)
@@ -153,6 +155,7 @@ class MainContent(QFrame):
         self.plots_area.setWidget(self.plots_container)
         self.main_layout.addWidget(self.plots_area)
 
+        # Placeholder for plots when there are no plots generated
         self.plots_empty = QLineEdit()
         self.plots_empty.setReadOnly(True)
         self.plots_empty.setPlaceholderText("لم يتم انتاج اي رسومات لهذا السؤال")
@@ -184,6 +187,8 @@ class MainContent(QFrame):
         """)
         self.results_layout.addWidget(self.results_label)
         self.results_layout.addStretch()
+
+        # Export to CSV button
         self.export_button = QPushButton(icon=QIcon('src/UI/assets/download.png'))
         self.export_button.setStyleSheet("""
             QPushButton {
@@ -204,6 +209,7 @@ class MainContent(QFrame):
         self.results_layout.addWidget(self.export_button)
         self.main_layout.addLayout(self.results_layout)
 
+        # Data table
         self.results_area = QTableWidget()
         self.results_area.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.main_layout.addWidget(self.results_area)
@@ -212,6 +218,7 @@ class MainContent(QFrame):
         self.setLayout(self.main_layout)
     
     def update_ui(self, initial):
+        """Updates UI depending if its the home page or the results page"""
         self.initial = initial
 
         if self.initial:
@@ -265,7 +272,6 @@ class MainContent(QFrame):
         dialog = QDialog()
         dialog.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
 
-        # Container layout
         layout = QVBoxLayout(dialog)
         layout.setContentsMargins(16, 16, 16, 16)
         layout.setSpacing(12)
@@ -281,7 +287,7 @@ class MainContent(QFrame):
             }
         """)
 
-        # Button layout (OK + Copy)
+        # Buttons
         button_layout = QHBoxLayout()
         button_layout.setSpacing(8)
 
@@ -325,16 +331,16 @@ class MainContent(QFrame):
                 background-color: #374151;
             }
         """)
+
         def copy_tp_clipboard():
             QApplication.clipboard().setText(self.sql_code)
             copy_button.setText('تم النسخ')
+
         copy_button.clicked.connect(copy_tp_clipboard)
 
-        # Add buttons to layout
         button_layout.addWidget(copy_button)
         button_layout.addWidget(ok_button)
 
-        # Add widgets to main layout
         layout.addWidget(label)
         layout.addLayout(button_layout)
 
@@ -351,7 +357,7 @@ class MainContent(QFrame):
     
     def load_result_from_file(self, folder_path):
         """Load and display result from file"""
-        if not folder_path:  # Empty path means go to initial state
+        if not folder_path:  # Empty path means go to home page
             self.initial = True
             self.update_ui(self.initial)
             return
@@ -359,23 +365,20 @@ class MainContent(QFrame):
         has_plots = False
         for f in os.listdir(folder_path):
             path = os.path.join(folder_path, f)
-            if os.path.isfile(path):
-                # Load results
-                print(f"File: {path}")
+
+            if os.path.isfile(path): # Load results
                 with open(path, 'r', encoding='utf-8') as f:
                     result = json.load(f)
-            else:
-                # Load plots
-                print(f"Directory : {path}")
+            else: # Load plots
                 while self.plots_layout.count():
                     item = self.plots_layout.takeAt(0)
                     widget = item.widget()
                     if widget is not None:
                         widget.deleteLater()
                 self.plots_layout.addStretch()
+
                 for plot in os.listdir(path):
                     plot_path = os.path.join(path, plot)
-                    print(f"Plot: {plot_path}")
                     plot_widget = PlotWidget(plot_path, QSize(150, 150))
                     plot_widget.setStyleSheet("""
                         margin: 0 10px;
@@ -386,10 +389,10 @@ class MainContent(QFrame):
                 
                 self.plots_area.setWidget(self.plots_container)
 
-        if has_plots:
+        if has_plots: # Remove plots placeholder
             self.plots_empty.hide()
             self.plots_area.show()
-        else:
+        else: # Show plots placeholder
             self.plots_area.hide()
             self.plots_empty.show()
 
@@ -408,17 +411,19 @@ class MainContent(QFrame):
             for j, value in enumerate(row):
                 self.results_area.setItem(i, j, QTableWidgetItem("NULL" if value is None else str(value)))
 
-        # load the query back into the editor
+        # load the question back into the editor
         self.text_input.text_edit.setText(result['query_text'])
 
         # load SQL Code
         self.sql_code = result['query_sql']
         
     def on_new_question_pressed(self):
+        """Updates UI to the home page when pressed"""
         self.update_ui(initial=True)
         self.new_question.emit()
 
     def export_to_csv(self):
+        """Exports current data loaded to a csv file"""
         path, _ = QFileDialog.getSaveFileName(
             self,
             "Save CSV",

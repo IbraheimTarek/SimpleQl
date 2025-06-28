@@ -116,37 +116,6 @@ class DBManager:
     def load(self):
         self.loadSchemaFromFile()
         self.loadDescFromFile()
-    
-if __name__ == '__main__':
-    db_manager = DBManager(DB_PATH)
-    print(db_manager.schema)
-    print(db_manager.primary_keys)
-    print(db_manager.foreign_keys)
-    # desc_map = {
-    # "lists": {
-    #           "user_id": "ID related to the user who created the list.",
-    #           "list_id": "ID of the list on Mubi",
-    #           "list_title": "Name of the list",
-    #           "list_movie_number": "Number of movies added to the list",
-    #           "list_update_timestamp_utc": "Last update timestamp for the list",
-    #           "list_creation_timestamp_utc": "Creation timestamp for the list",
-    #           "list_followers": "Number of followers on the list",
-    #           "list_url": "URL to the list page on Mubi",
-    #           "list_comments": "Number of comments on the list",
-    #           "list_description": "List description made by the user",
-    #           "list_cover_image_url": "",
-    #           "list_first_image_url": "",
-    #           "list_second_image_url": "",
-    #           "list_third_image_url": "",
-    #         },
 
-    # "lists_users": {
-    #           "user_id": "ID related to the user who created the list.",
-    #           "list_id": "ID of the list on Mubi",
-    #           "list_update_date_utc": "Last update date for the list",
-    #           "list_create_date_utc": "Creation date for the list",
-    #           "user_trialist": "whether the user was a tralist when he created the list ",
-    #         }
-    # }
 
     

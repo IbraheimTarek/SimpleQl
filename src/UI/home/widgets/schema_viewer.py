@@ -6,6 +6,11 @@ from PyQt6.QtWidgets import (
 from pipeline.translator.Translator import translate
 
 class SchemaViewer(QDialog):
+    """
+    Window for editing database schema descriptions
+    Args:
+        db_manager (DBManager): Manager for current database
+    """
     def __init__(self, db_manager: dict, parent=None):
         super().__init__(parent)
         self.setWindowTitle("تفاصيل قاعدة البيانات")
@@ -14,14 +19,16 @@ class SchemaViewer(QDialog):
         self.schema_data = db_manager.schema
         self.description_inputs = {}  # Stores inputs for saving later
 
+        # Main layout
         layout = QVBoxLayout(self)
 
+        # Scroll area for descriptions
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll_content = QWidget()
         scroll_layout = QVBoxLayout(scroll_content)
 
-        # For each table
+        # For each table make a groupbox
         for table_name, columns in self.schema_data.items():
             group = QGroupBox(table_name)
             group.setStyleSheet("""
@@ -85,14 +92,13 @@ class SchemaViewer(QDialog):
         layout.addWidget(save_btn)
 
     def save_descriptions(self):
+        """Saves all descriptions when save button is pressed"""
         for (table, column), input_field in self.description_inputs.items():
             desc = input_field.text()
+            self.schema_data[table][column] = desc
             if desc == "":
                 continue
-            self.schema_data[table][column] = desc
             translated_desc = translate(desc)
-            print(f"Translated Desc: ", translated_desc)
             self.db_manager.embedDescription(table, column, translated_desc)
         self.db_manager.save()
-        print("Updated schema:", self.schema_data)
         self.accept()

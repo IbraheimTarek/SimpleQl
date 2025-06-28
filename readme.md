@@ -53,8 +53,10 @@ We used different **English-to-SQL datasets**, which were **back-translated into
 ### 🔑 Prerequisites
 - Create **LangChain** and **Groq** API keys.
 - Place them in a `.env` file like this:
+```
 LANGCHAIN_API_KEY=your_key_here
 GROQ_API_KEY=your_key_here
+```
 
 ### 🧪 Setup
 
@@ -63,6 +65,7 @@ git clone https://github.com/IbraheimTarek/SimpleQl.git
 cd SimpleQl
 cp ../.env ./
 pip install -r requirements.txt
+./src/setup_models.sh
 ```
 ### to run the app
 ```bash

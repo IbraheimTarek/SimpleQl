@@ -4,6 +4,12 @@ from PyQt6.QtCore import Qt, QSize
 import os
 
 class PlotWidget(QLabel):
+    """
+    Widget for displaying a given plot
+    Args:
+        image_path (str): path to plot image
+        max_size (QSize): Maximum size of plot image
+    """
     def __init__(self, image_path: str, max_size: QSize = QSize(200, 150), parent=None):
         super().__init__(parent)
         self.image_path = os.path.abspath(image_path)
@@ -23,7 +29,6 @@ class PlotWidget(QLabel):
         self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def mousePressEvent(self, event: QMouseEvent):
-        """Handle mouse click event"""
         if event.button() == Qt.MouseButton.LeftButton:
             self.open_image_dialog()
 
@@ -40,7 +45,7 @@ class PlotWidget(QLabel):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         pixmap = QPixmap(self.image_path)
 
-        # Scale to fit but allow larger window resizing
+        # Scale to fit
         label.setPixmap(pixmap.scaled(dialog.size(), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
         layout.addWidget(label)
 

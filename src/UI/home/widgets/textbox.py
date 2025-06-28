@@ -1,13 +1,19 @@
-from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QTextEdit, QMessageBox, QWidget
+from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QTextEdit, QMessageBox
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QIcon, QMovie
 
 from run_pipeline import run_pipeline
 
 class Worker(QObject):
-    finished = pyqtSignal()
-    error = pyqtSignal()
-    result = pyqtSignal(str, str, list, list)
+    """
+    Worker class to run on different thread than UI
+    Args:
+        db_manager (DBManager): Manager for current database
+        query_text (str): User input to be passed to pipeline
+    """
+    finished = pyqtSignal()                     # To signal that the thread finished
+    error = pyqtSignal()                        # To signal that an error occured while running
+    result = pyqtSignal(str, str, list, list)   # To signal that the results are ready and pass them (query_text, query_sql, rows, columns)
 
     def __init__(self, db_manager, query_text):
         super().__init__()
@@ -33,7 +39,12 @@ class Worker(QObject):
         self.finished.emit()
 
 class TextBox(QFrame):
-    query_executed = pyqtSignal(str, str, list, list)  # query_text, query_sql, rows, columns
+    """
+    Customized text box to take the user's input
+    Args:
+        db_manager (DBManager): Manager for current database
+    """
+    query_executed = pyqtSignal(str, str, list, list)  # To signal that the results are ready and pass them (query_text, query_sql, rows, columns)
 
     def __init__(self, db_manager, parent=None):
         super().__init__(parent)
@@ -61,6 +72,7 @@ class TextBox(QFrame):
         main_layout.setContentsMargins(4, 4, 4, 4)
         main_layout.setSpacing(8)
 
+        # User input area
         self.text_edit = QTextEdit()
         self.text_edit.setPlaceholderText("ما هو عدد العملاء اصحاب المرتبات الاكبر من 5 الاف؟")
         self.text_edit.setStyleSheet("""
@@ -134,25 +146,37 @@ class TextBox(QFrame):
         self.text_edit.setFocus()
 
     def set_height_for_lines(self, lines):
+        """
+        Sets height of text box according to number of lines
+        """
         height = self.base_height + (self.line_height * lines)
         self.setFixedHeight(int(height))
 
     def on_text_changed(self):
+        """
+        Handles the event of text changing
+        """
         text = self.text_edit.toPlainText().strip()
+        # Enable button if no thread is running
         if not hasattr(self, "worker") or not self.worker or not self.worker.running:
             self.execute_button.setEnabled(bool(text))
 
+        # update height of text box
         doc = self.text_edit.document()
         doc_height = doc.size().height()
         lines_needed = max(1, int(doc_height / self.line_height)) if self.line_height > 0 else 1
         display_lines = min(lines_needed, self.max_lines)
         self.set_height_for_lines(display_lines)
 
+        # Add a vertical scroll bar when exceeding max size
         self.text_edit.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded if lines_needed > self.max_lines else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
 
     def execute_query(self):
+        """
+        Runs the pipeline on another thread
+        """
         query = self.text_edit.toPlainText().strip()
         if not query:
             return
@@ -164,7 +188,7 @@ class TextBox(QFrame):
         self.spinner.frameChanged.connect(lambda: self.execute_button.setIcon(QIcon(self.spinner.currentPixmap())))
         self.spinner.start()
 
-        # Run long task in background
+        # Run in another thread
         self.thread = QThread()
         self.worker = Worker(self.db_manager, query)
         self.worker.error.connect(self.handleError)
@@ -180,12 +204,15 @@ class TextBox(QFrame):
         self.thread.start()
 
     def handleError(self):
-        msg = QMessageBox.critical(
-                self, 
-                "خطأ", 
-                "تعذر انتاج الكود المناسب لهذا السؤال. الرجاء تحسين السؤال او حاول مرة اخري", 
-                QMessageBox.StandardButton.Ok
-            )
+        """
+        Shows a pop up error indicating pipeline failure
+        """
+        QMessageBox.critical(
+            self, 
+            "خطأ", 
+            "تعذر انتاج الكود المناسب لهذا السؤال. الرجاء تحسين السؤال او حاول مرة اخري", 
+            QMessageBox.StandardButton.Ok
+        )
         self.spinner.stop()
         self.execute_button.setIcon(QIcon())
         self.execute_button.setText("▶")

@@ -98,8 +98,7 @@ class DataVizTool(BaseTool):
         return label if len(label) <= max_len else label[:max_len].rstrip() + "..."
     
 
-    def vis_single_cat(self, df, col):
-
+    def vis_single_cat(self, df, col, target_col=None):
         # Drop NA to avoid counting them as unique
         non_null_values = df[col].dropna()
         unique_ratio = non_null_values.nunique() / len(non_null_values)
@@ -111,6 +110,12 @@ class DataVizTool(BaseTool):
         value_counts = non_null_values.value_counts()
         self._ensure_plot_dir()
 
+        if len(value_counts) > 25:
+            # Group top 25 values, rest to 'Other'
+            top_25 = value_counts.head(25).index
+            df[col] = df[col].apply(lambda x: x if x in top_25 else 'Other')
+            value_counts = df[col].value_counts()
+
         if len(value_counts) <= 10:
             plt.figure(figsize=(6, 6))
             value_counts.plot.pie(autopct='%1.1f%%', startangle=90)
@@ -120,12 +125,12 @@ class DataVizTool(BaseTool):
             plt.figure(figsize=(10, 5))
             sns.countplot(data=df, x=col, order=value_counts.index)
             plt.title(f'Bar Plot for {col}')
-            plt.xticks(rotation=45) 
+            plt.xticks(rotation=45)
 
-            path = os.path.join(self._plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
-            plt.savefig(path, bbox_inches="tight")
-            plt.close()
-            return path
+        path = os.path.join(self._plots_dir, f"{col}_cat_{uuid.uuid4().hex}.png")
+        plt.savefig(path, bbox_inches="tight")
+        plt.close()
+        return path
 
     def vis_two_cat(self, df, col1, col2):
         self._ensure_plot_dir()

@@ -288,6 +288,18 @@ class Sidebar(QFrame):
         self.on_result_clicked(button)
     
     def load_query_results(self):
+        # Remove old buttons from layout
+        for i in reversed(range(self.buttons_layout.count())):
+            item = self.buttons_layout.itemAt(i)
+            widget = item.widget()
+            if widget is not None:
+                widget.setParent(None)
+            else:
+                self.buttons_layout.removeItem(item)
+
+        # Clear internal tracking list
+        self.query_buttons.clear()
+        
         if not os.path.isdir(self.results_directory):
             os.makedirs(self.results_directory)
             self.query_counter = 0

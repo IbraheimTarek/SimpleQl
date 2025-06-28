@@ -6,6 +6,7 @@ from run_pipeline import run_pipeline
 
 class Worker(QObject):
     finished = pyqtSignal()
+    error = pyqtSignal()
     result = pyqtSignal(str, str, list, list)
 
     def __init__(self, db_manager, query_text):
@@ -18,11 +19,16 @@ class Worker(QObject):
         if self.running:
             return
         self.running = True
-
-        query_sql, rows, columns = run_pipeline(self.query_text, self.db_manager)
-        if query_sql and rows and columns:
-            self.result.emit(self.query_text, query_sql, rows, columns)
-
+        try:
+            query_sql, rows, columns = run_pipeline(self.query_text, self.db_manager)
+            if query_sql and rows and columns:
+                self.result.emit(self.query_text, query_sql, rows, columns)
+        except:
+            self.error.emit()
+            self.running = False
+            self.finished.emit()
+            return
+        
         self.running = False
         self.finished.emit()
 
@@ -161,6 +167,7 @@ class TextBox(QFrame):
         # Run long task in background
         self.thread = QThread()
         self.worker = Worker(self.db_manager, query)
+        self.worker.error.connect(self.handleError)
         self.worker.moveToThread(self.thread)
 
         self.thread.started.connect(self.worker.run)
@@ -169,24 +176,21 @@ class TextBox(QFrame):
         self.thread.finished.connect(self.thread.deleteLater)
 
         self.worker.result.connect(self.on_query_executed)
-        try:
-            self.thread.start()
-        except:
-            msg = QMessageBox.critical(
+        
+        self.thread.start()
+
+    def handleError(self):
+        msg = QMessageBox.critical(
                 self, 
                 "خطأ", 
                 "تعذر انتاج الكود المناسب لهذا السؤال. الرجاء تحسين السؤال او حاول مرة اخري", 
                 QMessageBox.StandardButton.Ok
             )
-            self.spinner.stop()
-            self.execute_button.setIcon(QIcon())
-            self.execute_button.setText("▶")
-            self.execute_button.setEnabled(True)
-            self.worker.running = False
-
-            # When user clicks OK, stop the thread (if running)
-            if self.thread.isRunning():
-                msg.buttonClicked.connect(self.thread.quit)
+        self.spinner.stop()
+        self.execute_button.setIcon(QIcon())
+        self.execute_button.setText("▶")
+        self.execute_button.setEnabled(True)
+        self.worker.running = False
 
     @pyqtSlot(str, str, list, list)
     def on_query_executed(self, query_text, query_sql, rows, columns):

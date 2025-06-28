@@ -16,36 +16,26 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     selected_schema = select_schema(question, schema, embeddings, spacy_model, bert_model, fuzz_threshold=fuzz_threshold, similarity_threshold=similarity_threshold)
     candidates = []
     _, context = get_schema_and_context(db_manager.db_path)
-    # print("Extracted Schema:")
-    # print(selected_schema)
-    # print("\nExtracted Context:")
-    # print(context)
 
     res = run_candidate_generator(question, db_manager.db_path, selected_schema, 3)
-    # print("\nFinal candidates:")
-    # print(res)
 
-    # keep only candidates that returned non-empty results & no error
+
     candidates = [
         query for query, rows_, err in res
         if err is None and rows_ and len(rows_) > 0
     ]
 
-    print("\nAccepted (non-empty) candidates:", candidates)
 
-    if not candidates:                       # nothing usable
-        return None, None,None                          # or raise/custom-handle
+    if not candidates:
+        return None, None,None
 
-    # choose the best query
     if len(candidates) == 1:
         best_query = candidates[0]
     else:
         tester = UnitTester(k_unit_tests=4)
         best_query = tester.choose_best(question, candidates)
 
-    print("\nBest query after validation:", best_query)
 
-    # execute the winner to get rows & columns
     rows, columns, _ = execute_query_rows_columns(db_manager.db_path, best_query)
 
     return best_query, rows, columns
@@ -53,7 +43,8 @@ def run_pipeline(question : str, db_manager : DBManager, fuzz_threshold=80, simi
     
 if __name__ == "__main__":
 
-    question = translate("ما هو العنوان الكامل للمطعم المسمى 'sanuki restraunt' ؟")
+    question = translate("What is the name of the longest movie title? When was it released?")
+    print("Question:", question)
     db_path = DB_PATH
     db_manager = DBManager(db_path)
     schema_explorer = SchemaExplorer(db_manager)

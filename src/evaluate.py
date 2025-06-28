@@ -23,7 +23,7 @@ random.seed(SEED)
 
 def uniform_sample(entries, k):
     """
-    Pick =k examples, distributed as evenly as possible across db_ids.
+    Pick =k examples, distributed across db ids.
     """
     buckets = collections.defaultdict(list)
     for e in entries:
@@ -229,7 +229,4 @@ if __name__ == "__main__":
     parser.add_argument("--k", type=int, default=MAX_SAMPLES, help="number of questions to sample (<=100)")
     parser.add_argument("--out", default="mismatches.csv", help="CSV path for mismatched answers")
     args = parser.parse_args()
-##to run this file
-##python evaluate_pipeline.py                        # 100 samples
-##python evaluate_pipeline.py --k 60  # custom
     evaluate(max_samples=min(args.k, MAX_SAMPLES))

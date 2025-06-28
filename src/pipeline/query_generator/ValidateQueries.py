@@ -23,11 +23,7 @@ except ImportError:
 
 
 def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
-    """
-    Pull the first JSON_looking array out of the LLM response and return it as Python object.  Work s even if the block is JSON5 or YAML.
-    Raises ValueError if no array found or if every parseing fails.
-    """
-    # grab the first ```json ... ``` block, else the first bare [ ... ]
+
     code_blocks = re.findall(
         r"```(?:json|json5)?\s*(\[\s*{.*?}\s*])\s*```",
         raw,
@@ -39,19 +35,17 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
 
     text = candidates[0]
 
-    # Try  json first (fast path)
     try:
         return json.loads(text)
     except Exception:
         pass  
 
-    # Fallback parsers, in order of availability
     parsers = []
     if json5:
         parsers.append(("json5", json5.loads))
     if yaml:
         parsers.append(("yaml", yaml.safe_load))
-    parsers.append(("ast", ast.literal_eval))   # always available
+    parsers.append(("ast", ast.literal_eval)) 
 
     for name, fn in parsers:
         try:
@@ -61,14 +55,10 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
         except Exception:
             continue
 
-    # Still here?  Everything failed.
     raise ValueError("Failed parse any JSON/JSON5/YAML from LLM output.")
 
 
 class UnitTester:
-    """
-    agent that ranks SQL queries for a given question by executing LLM-synthesised unit tests on SQLite database.
-    """
 
     def __init__(
         self,
@@ -94,10 +84,7 @@ class UnitTester:
         question: str,
         candidates: Sequence[str],
     ) -> str:
-        """
-        Returns the candidate SQL string that passes the most unit tests.
-        Stable tie-break: first in the list.
-        """
+
         if len(candidates) < 2:
             raise ValueError("Pass *at least two* candidate queries.")
 
@@ -118,12 +105,9 @@ class UnitTester:
         question: str,
         candidates: Sequence[str],
     ) -> List[JSONTest]:
-        """
-        Calls the LLM once and expects it to respond with a JSON array of
-        exactly `self.k` objects in the schema.
-        """
+
         system = SystemMessage(
-            content=VALIDATION_PROMPT.format(k=self.k)  # VALIDATION_PROMPT uses {k} for formatting
+            content=VALIDATION_PROMPT.format(k=self.k)
         )
 
         cand_block = "\n\n".join(f"-- Candidate {i+1}\n{sql}" for i, sql in enumerate(candidates))
@@ -136,7 +120,6 @@ class UnitTester:
         if len(tests) != self.k:
             raise RuntimeError(f"Expected {self.k} tests, got {len(tests)}.")
 
-        # sanity-check mandatory keys
         for i, t in enumerate(tests, 1):
             for key in ("schema_sql", "data_sql", "expected"):
                 if key not in t:
@@ -151,21 +134,18 @@ class UnitTester:
         ) -> List[bool]:
             order = bool(test.get("order_matters", False))
 
-            # normalise the expected results 
             expected_rows = test["expected"]
             if expected_rows and not isinstance(expected_rows[0], list):
-                expected_rows = [[x] for x in expected_rows]     # 1-col shortcut
+                expected_rows = [[x] for x in expected_rows]
             expected_rows = [tuple(r) for r in expected_rows]
 
-            # Decide comparison strategy based on order_matters flag.
-            # If order matters, we compare lists directly; otherwise, we use a multiset comparison.
             if order:
-                def equal(a: list[tuple]) -> bool:   # keep order
+                def equal(a: list[tuple]) -> bool:
                     return a == expected_rows
             else:
                 expected_multiset = Counter(expected_rows)
 
-                def equal(a: list[tuple]) -> bool:   # order-insensitive
+                def equal(a: list[tuple]) -> bool: 
                     return Counter(a) == expected_multiset
 
             passes: list[bool] = []
@@ -181,7 +161,6 @@ class UnitTester:
                 except Exception:
                     passes.append(False)
 
-            #self._print_unit_test_results(test, candidates, passes)
             return passes
 
     def _print_unit_test_results(self, test: JSONTest, candidates: Sequence[str], passes: List[bool]) -> None:
@@ -196,42 +175,3 @@ class UnitTester:
 
 
 
-if __name__ == "__main__":
-
-    QUESTION = (
-        "List the names of customers who have placed more than three orders "
-        "in the last 30 days."
-    )
-
-    CANDIDATES = [
-        # Likely correct
-        """
-        SELECT c.name
-        FROM customers c
-        JOIN orders o ON o.customer_id = c.id
-        WHERE o.order_date >= DATE('now', '-30 day')
-        GROUP BY c.name
-        HAVING COUNT(*) > 3;
-        """,
-        # Missing HAVING
-        """
-        SELECT c.name
-        FROM customers c
-        JOIN orders o ON o.customer_id = c.id
-        WHERE o.order_date >= DATE('now', '-30 day')
-        GROUP BY c.name;
-        """,
-        # Counts all-time
-        """
-        SELECT DISTINCT c.name
-        FROM customers c
-        WHERE (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) > 3;
-        """,
-    ]
-
-    tester = UnitTester(k_unit_tests=4)
-    best = tester.choose_best(QUESTION, CANDIDATES)
-
-    print("-------- BEST CANDIDATE ---------")
-    print(best.strip())
-    print("---------------------------------")

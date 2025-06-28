@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QVBoxLayout, QHBoxLayout, QPushButton, QFrame, QText
 from PyQt6.QtCore import Qt, pyqtSignal, pyqtSlot, QThread, pyqtSignal, QObject
 from PyQt6.QtGui import QIcon, QMovie
 
-from Pipline import run_pipeline
+from run_pipeline import run_pipeline
 
 class Worker(QObject):
     finished = pyqtSignal()

@@ -61,7 +61,7 @@ def _extract_json_array(raw: str) -> List[Dict[str, Any]]:
         except Exception:
             continue
 
-    # Still here?  Everything failed.
+    # if we reach here, all parsering methods have failed
     raise ValueError("Failed parse any JSON/JSON5/YAML from LLM output.")
 
 
@@ -69,7 +69,6 @@ class UnitTester:
     """
     agent that ranks SQL queries for a given question by executing LLM-synthesised unit tests on SQLite database.
     """
-
     def __init__(
         self,
         groq_api_key: str | None = None,
@@ -107,6 +106,7 @@ class UnitTester:
         for ut in unit_tests:
             results = self._run_unit_test(ut, candidates)
             for i, passed in enumerate(results):
+                # Increment the score for each candidate that passed the test by the number of tests it passed.
                 scores[i] += int(passed)
 
         best_idx = max(range(len(scores)), key=scores.__getitem__)
@@ -120,7 +120,7 @@ class UnitTester:
     ) -> List[JSONTest]:
         """
         Calls the LLM once and expects it to respond with a JSON array of
-        exactly `self.k` objects in the schema.
+        exactly `self.k` objects in the schema. where K is the number of unit tests.
         """
         system = SystemMessage(
             content=VALIDATION_PROMPT.format(k=self.k)  # VALIDATION_PROMPT uses {k} for formatting
@@ -153,8 +153,9 @@ class UnitTester:
 
             # normalise the expected results 
             expected_rows = test["expected"]
+            # the expected rows can be a list of lists or a flat list, so we ensure it's a list of tuples.
             if expected_rows and not isinstance(expected_rows[0], list):
-                expected_rows = [[x] for x in expected_rows]     # 1-col shortcut
+                expected_rows = [[x] for x in expected_rows]     # 1-col shortcut 
             expected_rows = [tuple(r) for r in expected_rows]
 
             # Decide comparison strategy based on order_matters flag.
@@ -169,6 +170,7 @@ class UnitTester:
                     return Counter(a) == expected_multiset
 
             passes: list[bool] = []
+            # Run each candidate SQL the test schema and data.
             for sql in candidates:
                 try:
                     with sqlite3.connect(":memory:") as conn:
@@ -181,10 +183,12 @@ class UnitTester:
                 except Exception:
                     passes.append(False)
 
-            #self._print_unit_test_results(test, candidates, passes)
             return passes
 
     def _print_unit_test_results(self, test: JSONTest, candidates: Sequence[str], passes: List[bool]) -> None:
+        """
+        this funcion prints the results of the unit tests in a readable format.
+        """
         print(f"Unit test schema (first 50 chars): {test['schema_sql'][:50]}...")
         print(f"Expected result: {test['expected']}")
         print(f"Order matters: {test.get('order_matters', False)}")
@@ -194,44 +198,3 @@ class UnitTester:
             print(sql.strip())
             print("-" * 40)
 
-
-
-if __name__ == "__main__":
-
-    QUESTION = (
-        "List the names of customers who have placed more than three orders "
-        "in the last 30 days."
-    )
-
-    CANDIDATES = [
-        # Likely correct
-        """
-        SELECT c.name
-        FROM customers c
-        JOIN orders o ON o.customer_id = c.id
-        WHERE o.order_date >= DATE('now', '-30 day')
-        GROUP BY c.name
-        HAVING COUNT(*) > 3;
-        """,
-        # Missing HAVING
-        """
-        SELECT c.name
-        FROM customers c
-        JOIN orders o ON o.customer_id = c.id
-        WHERE o.order_date >= DATE('now', '-30 day')
-        GROUP BY c.name;
-        """,
-        # Counts all-time
-        """
-        SELECT DISTINCT c.name
-        FROM customers c
-        WHERE (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) > 3;
-        """,
-    ]
-
-    tester = UnitTester(k_unit_tests=4)
-    best = tester.choose_best(QUESTION, CANDIDATES)
-
-    print("-------- BEST CANDIDATE ---------")
-    print(best.strip())
-    print("---------------------------------")

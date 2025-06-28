@@ -35,13 +35,13 @@ class CandidateGenerator:
         self.llm = llm
         self.max_revisions = max_revisions
 
-        # Prompt template for generating the candidate SQL query.
+        # Prompt that is generating the candidate SQL query.
         self.gen_prompt = PromptTemplate(
             input_variables=["question", "schema", "context"],
             template=FIRST_PROMPT
         )
 
-        # Prompt template for revising a faulty query.
+        # Prompt that is for revising a faulty query.
         self.revise_prompt = PromptTemplate(
             input_variables=["question", "schema", "context", "faulty_query", "error_description"],
             template= REVISION_PROMPT
@@ -93,17 +93,18 @@ def is_safe_select(sql: str) -> bool:
     # strip leading comments / whitespace
     sql_no_comments = re.sub(r"--.*?$|/\*.*?\*/", "", sql, flags=re.S | re.M).strip()
 
-    # first word
+    # first word must be SELECT or WITH 
+    # (case-insensitive, but we convert it to upper-case for consistency)
     first_word = re.match(r"^\s*(\w+)", sql_no_comments, flags=re.I)
     if not first_word or first_word.group(1).upper() not in {"SELECT", "WITH"}:
         return False
 
-    #  forbidden tokens 
+    # search inside forbidden tokens 
     if FORBIDDEN_TOKENS.search(sql_no_comments):
         return False
 
     parts = re.split(r";", sql_no_comments)
-    if len(parts) > 2:                       # more than one semicolon
+    if len(parts) > 2:                       # more than one semicolon return false
         return False
     if len(parts) == 2 and parts[1].strip(): # trailing text after last semicolon
         return False
@@ -111,7 +112,12 @@ def is_safe_select(sql: str) -> bool:
     return True
 
 def clean_sql(sql_str: str) -> str:
-
+    """
+    this function cleans the SQL string by:
+    1. Removes code fences (```) and extractes the content inside them.
+    2. Removing <think> tags and their content if there was any.
+    3. Replacing smart quotes with standard quotes.
+    """
     fence = re.search(r"```(?:\w+)?\s*(.*?)\s*```", sql_str, flags=re.S)
     if fence:
         sql_str = fence.group(1)
@@ -147,7 +153,9 @@ def clean_sql(sql_str: str) -> str:
     return sql_str.strip()
 
 def execute_query(db_path, query, timeout_sec: int = 10):
-
+    """
+    Execute a SQL query within a time limit.
+    """
     conn = sqlite3.connect(db_path)
     try:
         start = time.time()
@@ -176,12 +184,15 @@ def execute_query(db_path, query, timeout_sec: int = 10):
 
 
 def execute_query_rows_columns(db_path, query):
+    """
+    Execute a SQL query and return the rows and columns.
+    """
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     try:
         cursor.execute(query)
         rows    = cursor.fetchall()
-        columns = [d[0] for d in cursor.description]  # NEW
+        columns = [d[0] for d in cursor.description] 
         return rows, columns, None
     except Exception as e:
         return None, None, str(e)
@@ -193,7 +204,7 @@ def get_schema_and_context(db_path):
     extract SQLite database's schema and generate their context.
     
     Returns:
-      - schema: string with each table's name and its columns in the format: "table_name(col1 type, col2 type, ...)"
+      - schema: string with each table's name and its columns in this format: "table_name(col1 type, col2 type, ...)"
       - context: summary string listing tables.
     """
     conn = sqlite3.connect(db_path)
@@ -209,7 +220,7 @@ def get_schema_and_context(db_path):
             table_name = table_tuple[0]
             table_names.append(table_name)
             # Retrieve table info (columns and types)
-            cursor.execute(f"PRAGMA table_info({table_name});")
+            cursor.execute(f"PRAGMA table_info('{table_name}');")
             columns = cursor.fetchall()
             # Format each table's schema as: table_name(col1 type, col2 type, ...)
             col_defs = ", ".join([f"{col[1]} {col[2]}" for col in columns])
@@ -218,53 +229,32 @@ def get_schema_and_context(db_path):
         print("Error extracting schema:", e)
     finally:
         conn.close()
-    
+    # Join all table schemas into a single string
     schema_str = "; ".join(schema_parts)
     context_str = f"The database contains the following tables: {', '.join(table_names)}."
     return schema_str, context_str
 
-
-
 def run_candidate_generator(question, db_path, schema, num_candidates=3):
     """
-    generating multiple candidate queries....
-    
-    For each candidate:
-      1. Extracts the schema and context from the database.
-      2. Generates an initial candidate query.
-      3. Executes it on the SQLite database.
-      4. If a syntax error occurs or the result is empty, revises the query until a working query
-         is found or the maximum number of revisions is reached.
-    
-    Returns:
-      A list of tuples: (final_query, results, error) for each candidate query.
+    this function generates N candidate SQL queries for a given question using the CandidateGenerator class.
     """
-    unsafe = False
-    # 1
+    # Load schema and context from the database
     _, context = get_schema_and_context(db_path)
-    
-    # 2
     llm = ChatGroq(groq_api_key=groq_api_key, model_name=CANDIDATE_MODEL, temperature=0)
     candidate_generator = CandidateGenerator(llm=llm)
     
     all_candidates = []
-    
+    # Generate N candidate queries
     for i in range(num_candidates):
-        print(f"\n--- Processing candidate {i+1} ---")
         candidate_query = candidate_generator.generate_candidate_query(question, schema, context)
-        print("Generated Candidate Query:")
-        print(candidate_query)
-        # 3
         if not is_safe_select(candidate_query):
-            unsafe = True         # execution failed
             break
 
         results, error = execute_query(db_path, candidate_query)
         revision_count = 0
-        # 4
+        # If the query execution fails or returns empty results, revise the query until it succeeds or reaches the maximum number of revisions.
         while (error is not None or (results is not None and len(results) == 0)) and revision_count < candidate_generator.max_revisions:
             issue_description = error if error is not None else "Empty result returned"
-            # print("\nIssue encountered: ", issue_description)
             
             candidate_query = candidate_generator.revise_query(
                 question=question,
@@ -273,50 +263,11 @@ def run_candidate_generator(question, db_path, schema, num_candidates=3):
                 faulty_query=candidate_query,
                 error_description=issue_description
             )
-            # print(f"\nRevised Candidate Query (Attempt {revision_count + 1}):")
-            # print(candidate_query)
+
             
             results, error = execute_query(db_path, candidate_query)
             revision_count += 1
-        
-        # print("\nFinal Query for candidate", i+1, ":")
-        # print(candidate_query)
-        # print("\nQuery Results:")
-        # print(results)
-        # done
+
         all_candidates.append((candidate_query, results, error))
 
-    if unsafe:
-        print("Unsafe query detected. Stopping further processing.")
-        return all_candidates
-
     return all_candidates
-
-
-if __name__ == "__main__":
-
-    question = "What is the average rating score of the movie \"When Will I Be Loved\" and who was its director?"
-    db_path = DB_PATH
-    db_manager = DBManager(db_path)
-    schema = db_manager.schema
-
-    spacy_model = spacy.load("en_core_web_sm")
-    bert_model = SentenceTransformer("all-MiniLM-L6-v2")
-    print("loaded models mf")
-    selected_schema = select_schema(question, schema, spacy_model, bert_model, fuzz_threshold=80, similarity_threshold=0.4)
-    new_schema = {}
-    for table in selected_schema:
-        cols = []
-        for col in selected_schema[table]:
-            cols.append(col)
-        new_schema[table] = cols
-    
-    _, context = get_schema_and_context(db_path)
-    print("Extracted Schema:")
-    print(new_schema)
-    print("\nExtracted Context:")
-    print(context)
-
-    res = run_candidate_generator(question, db_path, new_schema, 3)
-    print("\n final candidates:")
-    print(res)

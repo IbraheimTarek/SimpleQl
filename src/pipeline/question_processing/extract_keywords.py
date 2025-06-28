@@ -1,5 +1,3 @@
-import spacy
-from keybert import KeyBERT
 from spacy.lang.en.stop_words import STOP_WORDS as SPACY_STOPWORDS
 
 def dependency_keywords(question: str, spacy_model): 
@@ -21,7 +19,6 @@ def dependency_keywords(question: str, spacy_model):
                 phrase = " ".join([t.text for t in [*modifiers, token]])
                 keywords.add(phrase)
         keywords.add(token.text)
-    # print(f"\tCandidates: {keywords}")
     return list(keywords)
 
 def keybert_keywords(question, candidates, bert_model, top_n=5):
@@ -40,8 +37,3 @@ def extract_keywords(question, bert_model, spacy_model, top_n=5):
     keywords = keybert_keywords(question, candidates, bert_model, top_n=top_n)
     return keywords
 
-if __name__ == '__main__':
-    question = "How many movies directed by Francis Ford Coppola have a popularity of more than 1,000? Indicate what is the highest amount of likes that each critic per movie has received, if there's any."
-    kw_model = KeyBERT()
-    nlp = spacy.load("en_core_web_sm")
-    print(extract_keywords(question, bert_model=kw_model, spacy_model=nlp, top_n=5))

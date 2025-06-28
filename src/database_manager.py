@@ -3,7 +3,6 @@ from typing import Dict, List, Tuple
 import pickle
 import os
 from models import get_embedding_model
-from Params import DB_PATH
 
 class DBManager:
     def __init__(self, db_path: str):
@@ -25,7 +24,6 @@ class DBManager:
             self.save()
         else: # was connected before
             self.load()
-
 
     def loadSchema(self) -> Dict[str, Dict[str, str]]:
         """

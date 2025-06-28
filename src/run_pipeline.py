@@ -1,4 +1,3 @@
-import pandas as pd
 from pipeline.query_generator.CandidateGenerator import *
 from plotter.Plotter import *
 from plotter.schema_explorer import *

@@ -10,4 +10,3 @@ spacy-model-en_core_web_sm
 torch
 farasapy
 requests
-langdetect

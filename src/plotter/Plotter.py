@@ -39,10 +39,10 @@ class DataVizTool(BaseTool):
         if len(valid_cols)==0:
             return "No plots needed"
         valid_cols = valid_cols[~valid_cols["Column Name"].str.lower().apply(self.is_id_column)]
-        # one valued 
-        if len(valid_cols)==0:
-            return "No plots needed"
-        valid_cols = valid_cols[~(valid_cols['UniqueValues'] == 1)]
+        ## one valued 
+        #if len(valid_cols)==0:
+        #   return "No plots needed"
+        #valid_cols = valid_cols[~(valid_cols['UniqueValues'] == 1)]
 
         if len(valid_cols)==0:
             return "No plots needed"
